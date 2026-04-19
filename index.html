@@ -1,92 +1,279 @@
-<div class="project-container">
-  <h2 class="website-title">THE CN WEB</h2>
-  <h3 class="website-subtitle">********We currently have the SPACE INVADERS game on until 4/30/2026. Thank you!********</h3>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>THE CN WEB</title>
+  <script src="https://tailwindcss.com"></script>
+  <style>
+    :root {
+      --brand-color: #FF0000;
+      --accent-color: #ffffff;
+    }
 
-  <div class="game-box" id="gameBox">
-    <!-- 1. The Custom Loading Screen -->
-    <div class="custom-overlay" id="overlay">
-      <button class="start-btn" onclick="startGame()">PLAY GAME</button>
+    /* Logic for switching pages */
+    .page-content {
+      display: none;
+    }
+    .active-page {
+      display: block;
+    }
+
+    /* Restored Original Styles */
+    .project-container {
+      max-width: 885px;
+      margin: 40px auto;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      padding: 0 20px;
+    }
+
+    .website-title {
+      text-align: center;
+      color: #222;
+      margin-bottom: 20px;
+      letter-spacing: 10px;
+      font-weight: 700;
+      font-size: 2.75rem;
+      text-transform: uppercase;
+    }
+
+    .website-subtitle {
+      text-align: center;
+      color: #444;
+      margin-bottom: 28px;
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    .game-box {
+      position: relative;
+      padding-bottom: 75%;
+      background: #111;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .custom-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      background: linear-gradient(45deg, #1a1a1a, #333);
+      transition: background 0.3s ease;
+    }
+
+    .start-btn {
+      padding: 16px 48px;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent-color);
+      background: var(--brand-color);
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.2s ease;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      user-select: none;
+    }
+
+    .start-btn:hover,
+    .start-btn:focus {
+      transform: scale(1.1);
+      background: #7722ff;
+      outline: none;
+    }
+
+    iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 16px;
+    }
+
+    button.back-home {
+      margin-bottom: 24px;
+      color: var(--brand-color);
+      font-weight: 700;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 1rem;
+      transition: color 0.2s ease;
+      user-select: none;
+    }
+    button.back-home:hover,
+    button.back-home:focus {
+      color: #7722ff;
+      outline: none;
+      text-decoration: underline;
+    }
+
+    /* Info page grid adjustments */
+    .info-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 2rem;
+      margin-top: 24px;
+    }
+
+    .info-card {
+      text-align: center;
+    }
+
+    .info-icon {
+      width: 48px;
+      height: 48px;
+      background-color: #e0e7ff;
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 28px;
+      margin: 0 auto 12px;
+    }
+
+    .info-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .info-desc {
+      color: #6b7280;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: #FF0000;
+      font-size: 0.875rem;
+      border-top: 1px solid #e5e7eb;
+      margin-top: 5rem;
+      user-select: none;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans">
+
+  <!-- PAGE 1: LANDING (HOME) -->
+  <div id="landing-page" class="page-content active-page">
+    <div class="project-container">
+      <h1 class="website-title">THE CN WEB</h1>
+      <p class="website-subtitle">Welcome to THE CN WEB. Last update: 4/19/2026</p>
+
+      <div
+        style="display: flex; flex-direction: column; align-items: center; gap: 24px; margin-top: 60px;"
+      >
+        <button onclick="showPage('game')" class="start-btn" style="padding: 28px 64px; font-size: 30px;">
+          ⭐PLAY GAME⭐
+        </button>
+
+        <button
+          onclick="showPage('info')"
+          style="
+            color: var(--brand-color);
+            font-weight: 700;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            text-decoration: underline;
+            font-size: 1rem;
+          "
+        >
+          View Website Future Projects
+        </button>
+      </div>
     </div>
-
-    <!-- 2. The Project (Hidden until clicked) -->
-    <div id="iframe-container"></div>
   </div>
-</div>
 
-<style>
-  :root {
-    --brand-color: #6200ee; /* Change this to your favorite color */
-    --accent-color: #ffffff;
-  }
+  <!-- PAGE 2: GAME -->
+  <div id="game-page" class="page-content">
+    <div class="project-container">
+      <button onclick="showPage('landing')" class="back-home">← BACK HOME</button>
 
-  .project-container {
-    max-width: 885px;
-    margin: 40px auto;
-    font-family: sans-serif;
-  }
+      <h2 class="website-title">SPACE INVADERS</h2>
+      <h3 class="website-subtitle"></h3>
 
-  .website-title {
-    text-align: center;
-    color: #222;
-    margin-bottom: 20px;
-    letter-spacing: 1px;
-  }
+      <div class="game-box" id="gameBox">
+        <div class="custom-overlay" id="overlay">
+          <button class="start-btn" onclick="startGame()">PLAY SPACE INVADERS</button>
+        </div>
+        <div id="iframe-container"></div>
+      </div>
+    </div>
+  </div>
 
-  .game-box {
-    position: relative;
-    padding-bottom: 75%; 
-    background: #111; /* Loading screen background color */
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-  }
+  <!-- PAGE 3: INFO -->
+  <div id="info-page" class="page-content">
+    <div class="project-container">
+      <button onclick="showPage('landing')" class="back-home">← BACK HOME</button>
 
-  .custom-overlay {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10;
-    background: linear-gradient(45deg, #1a1a1a, #333);
-  }
+      <h2 class="website-title">Projects</h2>
 
-  .start-btn {
-    padding: 15px 40px;
-    font-size: 20px;
-    font-weight: bold;
-    color: var(--accent-color);
-    background: var(--brand-color);
-    border: none;
-    border-radius: 50px;
-    cursor: pointer;
-    transition: transform 0.2s, background 0.2s;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-  }
+      <div
+        style="
+          background: white;
+          padding: 40px 36px;
+          border-radius: 16px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+          margin-top: 24px;
+        "
+      >
+        <p class="text-lg text-gray-600 mb-10 text-center" style="font-weight: 500;">
+          Welcome to Thecnweb.org. below is our current projects and apps!
+        </p>
 
-  .start-btn:hover {
-    transform: scale(1.1);
-    background: #7722ff;
-  }
+        <div class="info-cards">
+          <div class="info-card">
+            <div class="info-icon" style="background-color: #ede9fe;">N</div>
+            <h3 class="info-title">N Tech</h3>
+            <p class="info-desc" style="background-color: #ede9fe;">N Tech is a multi stage platform, starting with a credit card system, ending with a fully developed ai. the ai will be coming to thecnwb.org soon!</p>
+          </div>
+          <div class="info-card">
+            <div class="info-icon" style="background-color: #ff9999;">⭐</div>
+            <h3 class="info-title">Card Systems</h3>
+            <p class="info-desc" style="background-color: #ff0000;">Built with reliability and security throughout the edges of your cards to ensure safety. We are working to get the system on the website!</p>
+          </div>
+          <div class="info-card">
+            <div class="info-icon" style="background-color: #fed7e2;">🌐</div>
+            <h3 class="info-title">Internet</h3>
+            <p class="info-desc" style="background-color: #fed7e2;">Connected via high-speed CDNs to serve content instantly is thecnweb.org. we are working to make the website as efficient and easy-to-use for everyone!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  iframe {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    border: none;
-  }
-</style>
+  <!-- GLOBAL FOOTER -->
+  <footer>© 2026 thecnweb.org | Built with GitHub & Tailwind</footer>
 
-<script>
-  function startGame() {
-    const container = document.getElementById('iframe-container');
-    const overlay = document.getElementById('overlay');
-    
-    // Updated URL structure to ensure compatibility
-    const projectID = "1308176162";
-    const projectURL = `https://turbowarp.org/1308176162/embed?controls=false&autoplay=true`;
-    
-    container.innerHTML = `<iframe src="${projectURL}" allowtransparency="true" allowfullscreen></iframe>`;
-    overlay.style.display = 'none';
-  }
-</script>
+  <script>
+    function showPage(pageId) {
+      document.querySelectorAll(".page-content").forEach((page) => {
+        page.classList.remove("active-page");
+      });
+      document.getElementById(pageId + "-page").classList.add("active-page");
+      window.scrollTo(0, 0);
+    }
 
+    function startGame() {
+      const container = document.getElementById("iframe-container");
+      const overlay = document.getElementById("overlay");
+      const projectURL = `https://turbowarp.org/1308176162/embed`;
+
+      container.innerHTML = `<iframe src="${projectURL}" allowtransparency="true" allowfullscreen></iframe>`;
+      overlay.style.display = "none";
+    }
+  </script>
+</body>
+</html>
