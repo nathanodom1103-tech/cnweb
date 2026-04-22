@@ -6,8 +6,7 @@ app = Flask(__name__)
 
 # --- CONFIGURATION ---
 # Replace with your actual key
-client = OpenAI(api_key="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")
-
+client = OpenAI(api_key)
 MODEL_PRICING = {"gpt-4o-mini": {"input": 0.00015, "output": 0.0006}}
 
 # Global variable to track total spent (resets when server restarts)
