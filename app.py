@@ -6,7 +6,11 @@ app = Flask(__name__)
 
 # --- CONFIGURATION ---
 # Replace with your actual key
-client = OpenAI(api_key)
+
+# This looks for the secret key you will set in the Render dashboard
+client = OpenAI(api_key=os.environ.get("api_key"))
+
+
 MODEL_PRICING = {"gpt-4o-mini": {"input": 0.00015, "output": 0.0006}}
 
 # Global variable to track total spent (resets when server restarts)
