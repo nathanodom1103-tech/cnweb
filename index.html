@@ -169,7 +169,7 @@
   <div id="landing-page" class="page-content active-page">
     <div class="project-container">
       <h1 class="website-title">THE CN WEB</h1>
-      <p class="website-subtitle">Welcome to THE CN WEB. Last update: 4/23/2026. AI IS ALMOST OUT!</p>
+      <p class="website-subtitle">Welcome to THE CN WEB. Last update: 4/23/2026. AI IS HERE!</p>
 
       <div
         style="display: flex; flex-direction: column; align-items: center; gap: 24px; margin-top: 60px;"
@@ -177,7 +177,16 @@
         <button onclick="showPage('game')" class="start-btn" style="padding: 28px 64px; font-size: 30px;">
           ⭐PLAY GAME⭐
         </button>
+<button
 
+style="display: flex; flex-direction: column; align-items: center; gap: 24px; margin-top: 1px;"
+>
+<button onclick="showPage('login')" class="start-btn" style="padding: 28px 64px; font-size: 30px;">
+    ⭐AI
+</button>
+
+
+</button>
         <button
           onclick="showPage('info')"
           style="
@@ -254,6 +263,55 @@
     </div>
   </div>
 
+<!-- PAGE 4: LOGIN -->
+<div id="login-page" class="page-content">
+  <div class="project-container">
+    <button onclick="showPage('landing')" class="back-home">← BACK HOME</button>
+
+    <h2 class="website-title">Login</h2>
+    <p class="website-subtitle">Authorized access only</p>
+
+    <div
+      style="
+        background: white;
+        padding: 40px 36px;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        margin-top: 24px;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: center;
+      "
+    >
+      <input id="username" type="text" placeholder="Username"
+        style="width:100%; padding:12px; margin-bottom:12px; border-radius:8px; border:1px solid #ccc;" />
+
+      <input id="password" type="password" placeholder="Password"
+        style="width:100%; padding:12px; margin-bottom:20px; border-radius:8px; border:1px solid #ccc;" />
+
+      <button onclick="login()" class="start-btn" style="width:100%;">
+        LOGIN
+      </button>
+
+      <p id="login-error" style="color:red; margin-top:10px; display:none;">
+        Incorrect username or password
+      </p>
+
+      <!-- SUCCESS AREA -->
+      <div id="user-panel" style="margin-top:20px; display:none;">
+        <p id="welcome-user" style="font-weight:700;"></p>
+
+        <a id="user-link" target="_blank"
+           style="color: green; font-weight: bold;">
+        </a>
+
+        <br><br>
+        <button onclick="logout()" class="back-home">Logout</button>
+      </div>
+    </div>
+  </div>
+</div>
   <!-- GLOBAL FOOTER -->
   <footer>© 2026 thecnweb.org | Built By N Tech & Github. </footer>
 
@@ -274,6 +332,73 @@
       container.innerHTML = `<iframe src="${projectURL}" allowtransparency="true" allowfullscreen></iframe>`;
       overlay.style.display = "none";
     }
+    // MULTIPLE USERS
+const users = {
+  "jazz": {
+    password: "fire",
+    link: "https://cnweb-1.onrender.com"
+  },
+  "nathan": {
+    password: "1515",
+    link: "https://cnweb-1.onrender.com"
+  },
+    "kyra": {
+    password: "1323",
+    link: "https://cnweb-1.onrender.com"
+  },
+    "charlie": {
+    password: "1414",
+    link: "https://cnweb-1.onrender.com"
+  },
+    "michael": {
+    password: "1313",
+    link: "https://cnweb-1.onrender.com"
+  },
+  "other": {
+    password: "1234",
+    link: "https://cnweb-1.onrender.com"
+  }
+};
+
+function login() {
+  const user = document.getElementById("username").value;
+  const pass = document.getElementById("password").value;
+
+  if (users[user] && users[user].password === pass) {
+    document.getElementById("login-error").style.display = "none";
+    document.getElementById("user-panel").style.display = "block";
+
+    document.getElementById("welcome-user").innerText = "Welcome, " + user;
+
+    const link = document.getElementById("user-link");
+    link.href = users[user].link;
+    link.innerText = "Access AI";
+
+    sessionStorage.setItem("loggedInUser", user);
+  } else {
+    document.getElementById("login-error").style.display = "block";
+    document.getElementById("user-panel").style.display = "none";
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem("loggedInUser");
+  document.getElementById("user-panel").style.display = "none";
+}
+
+// AUTO-LOGIN RESTORE
+window.addEventListener("load", () => {
+  const savedUser = sessionStorage.getItem("loggedInUser");
+
+  if (savedUser && users[savedUser]) {
+    document.getElementById("user-panel").style.display = "block";
+    document.getElementById("welcome-user").innerText = "Welcome back, " + savedUser;
+
+    const link = document.getElementById("user-link");
+    link.href = users[savedUser].link;
+    link.innerText = "Access AI";
+  }
+});
   </script>
 </body>
 </html>
