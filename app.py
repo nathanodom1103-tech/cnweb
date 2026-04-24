@@ -6,7 +6,7 @@ import psycopg2
 app = Flask(__name__)
 
 # --- CONFIGURATION ---
-client = OpenAI(api_key=os.environ.get("api_key"))
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 MODEL_PRICING = {"gpt-4o-mini": {"input": 0.00015, "output": 0.0006}}
 
 # Allowed user list
@@ -58,7 +58,7 @@ def get_user_spent(name):
         result = cursor.fetchone()
         cursor.close()
         conn.close()
-        return result[0] if result and result[0] is not None else 0.0
+        return result[0] if result and result is not None else 0.0
     except Exception as e:
         print(f"Get Spent Error: {e}")
         return 0.0
@@ -81,7 +81,6 @@ def add_user_cost(name, cost):
         print(f"Add Cost Error: {e}")
 
 def get_all_data():
-    """Fetches all rows sorted by highest spender."""
     if not DATABASE_URL:
         return []
     try:
@@ -105,7 +104,7 @@ CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI Version 1.3</title>
+    <title>AI Assistant</title>
     <style>
         body { font-family: sans-serif; max-width: 600px; margin: 50px auto; line-height: 1.6; }
         textarea { width: 100%; height: 100px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
@@ -113,19 +112,22 @@ CHAT_TEMPLATE = """
         button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
         #response { background: #f4f4f4; padding: 15px; margin-top: 20px; border-radius: 5px; min-height: 50px; white-space: pre-wrap; }
         .stats { margin-top: 10px; font-weight: bold; color: #555; }
-        .nav { text-align: right; margin-bottom: 20px; }
-        .nav a { color: #007bff; text-decoration: none; font-weight: bold; }
+        .nav { text-align: right; margin-bottom: 20px; min-height: 24px; }
+        .nav a { color: #007bff; text-decoration: none; font-weight: bold; display: none; }
     </style>
 </head>
 <body>
-    <div class="nav"><a href="/dashboard">Admin Dashboard &rarr;</a></div>
-    <h2>N Tech AI Version 1.3</h2>
+    <!-- Link is hidden by default using CSS display: none -->
+    <div class="nav"><a href="/dashboard" id="adminLink">Admin Dashboard &rarr;</a></div>
     
-    <label for="userName"><strong>Enter Your IDN:</strong></label><br>
-    <input type="text" id="userName" placeholder="IDN given by Nathan"><br><br>
+    <h2>AI Assistant (Flask + Postgres Auth)</h2>
+    
+    <label for="userName"><strong>Enter Your Name / ID:</strong></label><br>
+    <!-- oninput triggers the checkName function on every keystroke -->
+    <input type="text" id="userName" placeholder="e.g., nathan or 001" oninput="checkName()"><br><br>
     
     <label for="userInput"><strong>Your Prompt:</strong></label><br>
-    <textarea id="userInput" placeholder="What's on your mind?"></textarea><br><br>
+    <textarea id="userInput" placeholder="What is on your mind?"></textarea><br><br>
     
     <button onclick="askAI()">Submit Request</button>
 
@@ -133,6 +135,18 @@ CHAT_TEMPLATE = """
     <div class="stats">Your Total Spent: $<span id="totalDisplay">0.000000</span></div>
 
     <script>
+        // Check if the user is typing "nathan"
+        function checkName() {
+            const nameInput = document.getElementById('userName').value.trim();
+            const adminLink = document.getElementById('adminLink');
+            
+            if (nameInput === "nathan") {
+                adminLink.style.display = "inline"; // Show the button
+            } else {
+                adminLink.style.display = "none";   // Hide the button
+            }
+        }
+
         async function askAI() {
             const name = document.getElementById('userName').value.trim();
             const prompt = document.getElementById('userInput').value;
@@ -186,7 +200,7 @@ DASHBOARD_TEMPLATE = """
     <table>
         <thead>
             <tr>
-                <th>IDN</th>
+                <th>User / ID</th>
                 <th>Total Spent ($)</th>
             </tr>
         </thead>
@@ -211,7 +225,6 @@ def index():
 
 @app.route('/dashboard')
 def dashboard():
-    # Grab all data from database
     db_data = get_all_data()
     return render_template_string(DASHBOARD_TEMPLATE, data=db_data)
 
@@ -222,7 +235,7 @@ def ask():
     user_prompt = data.get('prompt')
 
     if name not in ALLOWED_NAMES:
-        return jsonify({"error": "Access denied. IDN not recognized."}), 403
+        return jsonify({"error": "Access denied. Name not recognized."}), 403
 
     try:
         response = client.chat.completions.create(
@@ -230,7 +243,7 @@ def ask():
             messages=[{"role": "user", "content": user_prompt}]
         )
         
-        answer = response.choices[0].message.content
+        answer = response.choices.message.content
         
         usage = response.usage
         cost = ((usage.prompt_tokens / 1000) * MODEL_PRICING["gpt-4o-mini"]["input"]) + \
