@@ -119,7 +119,7 @@ CHAT_TEMPLATE = """
 </head>
 <body>
     <div class="nav"><a href="/dashboard">Admin Dashboard &rarr;</a></div>
-    <h2>AI Assistant (Flask + Postgres Auth)</h2>
+    <h2>N Tech AI Version 1.3</h2>
     
     <label for="userName"><strong>Enter Your IDN:</strong></label><br>
     <input type="text" id="userName" placeholder="IDN given by Nathan"><br><br>
@@ -186,7 +186,7 @@ DASHBOARD_TEMPLATE = """
     <table>
         <thead>
             <tr>
-                <th>User / ID</th>
+                <th>IDN</th>
                 <th>Total Spent ($)</th>
             </tr>
         </thead>
