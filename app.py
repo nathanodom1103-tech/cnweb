@@ -243,7 +243,8 @@ def ask():
             messages=[{"role": "user", "content": user_prompt}]
         )
         
-        answer = response.choices.message.content
+        # FIX ADDED HERE: Added [0] after choices
+        answer = response.choices[0].message.content
         
         usage = response.usage
         cost = ((usage.prompt_tokens / 1000) * MODEL_PRICING["gpt-4o-mini"]["input"]) + \
