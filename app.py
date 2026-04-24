@@ -6,7 +6,7 @@ import psycopg2
 app = Flask(__name__)
 
 # --- CONFIGURATION ---
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.environ.get("api_key"))
 MODEL_PRICING = {"gpt-4o-mini": {"input": 0.00015, "output": 0.0006}}
 
 # Allowed user list
