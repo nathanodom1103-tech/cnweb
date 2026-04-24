@@ -109,13 +109,14 @@ HTML_TEMPLATE = """
     </style>
 </head>
 <body>
-    <h2>AI Assistant (Flask + Postgres Auth)</h2>
+    <h2>N Tech AI </h2>
+    <h3>Version 1.2 </h3>
     
-    <label for="userName"><strong>Enter Your Name / ID:</strong></label><br>
-    <input type="text" id="userName" placeholder="e.g., nathan or 001"><br><br>
+    <label for="userName"><strong>Enter IDN:</strong></label><br>
+    <input type="text" id="userName" placeholder="IDN is given by Nathan"><br><br>
     
     <label for="userInput"><strong>Your Prompt:</strong></label><br>
-    <textarea id="userInput" placeholder="What is on your mind?"></textarea><br><br>
+    <textarea id="userInput" placeholder="What's on your mind?"></textarea><br><br>
     
     <button onclick="askAI()">Submit Request</button>
 
@@ -171,7 +172,7 @@ def ask():
 
     # Deny request if user is not in the whitelist
     if name not in ALLOWED_NAMES:
-        return jsonify({"error": "Access denied. Name not recognized in the database."}), 403
+        return jsonify({"error": "Access denied. IDN not recognized in the database."}), 403
 
     try:
         response = client.chat.completions.create(
