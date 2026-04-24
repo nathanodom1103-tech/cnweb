@@ -14,7 +14,6 @@ ALLOWED_NAMES = ["nathan", "001", "002", "003", "004", "005", "006", "007", "008
 
 # --- SECURE DATABASE URL ---
 DATABASE_URL = os.environ.get("DATABASE_URL")
-# Render requires 'sslmode=require' for external/internal connections sometimes
 if DATABASE_URL and "sslmode" not in DATABASE_URL:
     if "?" in DATABASE_URL:
         DATABASE_URL += "&sslmode=require"
@@ -22,34 +21,27 @@ if DATABASE_URL and "sslmode" not in DATABASE_URL:
         DATABASE_URL += "?sslmode=require"
 
 def get_db_connection():
-    """Helper to establish database connections cleanly."""
     return psycopg2.connect(DATABASE_URL)
 
 # --- DATABASE LOGIC ---
 def init_db():
-    """Creates the users table and seeds authorized users."""
     if not DATABASE_URL:
         return
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Create table mapping names to cumulative cost
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 name VARCHAR(50) PRIMARY KEY,
                 total_spent FLOAT DEFAULT 0.0
             );
         """)
-        
-        # Populate default users if not already in the database
         for name in ALLOWED_NAMES:
             cursor.execute("""
                 INSERT INTO users (name, total_spent) 
                 VALUES (%s, 0.0) 
                 ON CONFLICT (name) DO NOTHING;
             """, (name,))
-            
         conn.commit()
         cursor.close()
         conn.close()
@@ -57,7 +49,6 @@ def init_db():
         print(f"Database Init Error: {e}")
 
 def get_user_spent(name):
-    """Retrieves the total spent for a specific user."""
     if not DATABASE_URL:
         return 0.0
     try:
@@ -73,7 +64,6 @@ def get_user_spent(name):
         return 0.0
 
 def add_user_cost(name, cost):
-    """Adds a newly incurred cost to the user's running total."""
     if not DATABASE_URL:
         return
     try:
@@ -90,30 +80,49 @@ def add_user_cost(name, cost):
     except Exception as e:
         print(f"Add Cost Error: {e}")
 
-# Initialize the database table when the server starts
+def get_all_data():
+    """Fetches all rows sorted by highest spender."""
+    if not DATABASE_URL:
+        return []
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, total_spent FROM users ORDER BY total_spent DESC;")
+        results = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return results
+    except Exception as e:
+        print(f"Get All Data Error: {e}")
+        return []
+
+# Run DB seed
 init_db()
 
-# --- HTML TEMPLATE ---
-HTML_TEMPLATE = """
+# --- HTML TEMPLATES ---
+
+CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AI Flask Assistant</title>
+    <title>N Tech AI Version 1.3</title>
     <style>
         body { font-family: sans-serif; max-width: 600px; margin: 50px auto; line-height: 1.6; }
-        textarea { width: 100%; height: 100px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
+        textarea { width: 100%; height: 100px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
         input { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
         button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
         #response { background: #f4f4f4; padding: 15px; margin-top: 20px; border-radius: 5px; min-height: 50px; white-space: pre-wrap; }
         .stats { margin-top: 10px; font-weight: bold; color: #555; }
+        .nav { text-align: right; margin-bottom: 20px; }
+        .nav a { color: #007bff; text-decoration: none; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h2>N Tech AI </h2>
-    <h3>Version 1.2 </h3>
+    <div class="nav"><a href="/dashboard">Admin Dashboard &rarr;</a></div>
+    <h2>AI Assistant (Flask + Postgres Auth)</h2>
     
-    <label for="userName"><strong>Enter IDN:</strong></label><br>
-    <input type="text" id="userName" placeholder="IDN is given by Nathan"><br><br>
+    <label for="userName"><strong>Enter Your IDN:</strong></label><br>
+    <input type="text" id="userName" placeholder="IDN given by Nathan"><br><br>
     
     <label for="userInput"><strong>Your Prompt:</strong></label><br>
     <textarea id="userInput" placeholder="What's on your mind?"></textarea><br><br>
@@ -129,15 +138,10 @@ HTML_TEMPLATE = """
             const prompt = document.getElementById('userInput').value;
             const resDiv = document.getElementById('response');
             
-            if (!name) {
-                alert("Please enter your name/ID.");
+            if (!name || !prompt) {
+                alert("Please fill in both fields.");
                 return;
             }
-            if (!prompt) {
-                alert("Please enter a prompt.");
-                return;
-            }
-
             resDiv.innerText = "Thinking...";
 
             const response = await fetch('/ask', {
@@ -159,10 +163,57 @@ HTML_TEMPLATE = """
 </html>
 """
 
+DASHBOARD_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Database Dashboard</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; line-height: 1.6; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+        .nav { margin-bottom: 20px; }
+        .nav a { color: #007bff; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="nav"><a href="/">&larr; Back to Chat</a></div>
+    <h2>User Spend Dashboard</h2>
+    <p>Below is a live view of all tracked users sorted by the highest spenders.</p>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>User / ID</th>
+                <th>Total Spent ($)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+            <tr>
+                <td>{{ row[0] }}</td>
+                <td>${{ "%.6f"|format(row[1]) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
+"""
+
 # --- ROUTES ---
+
 @app.route('/')
 def index():
-    return render_template_string(HTML_TEMPLATE)
+    return render_template_string(CHAT_TEMPLATE)
+
+@app.route('/dashboard')
+def dashboard():
+    # Grab all data from database
+    db_data = get_all_data()
+    return render_template_string(DASHBOARD_TEMPLATE, data=db_data)
 
 @app.route('/ask', methods=['POST'])
 def ask():
@@ -170,9 +221,8 @@ def ask():
     name = data.get('name', '').strip()
     user_prompt = data.get('prompt')
 
-    # Deny request if user is not in the whitelist
     if name not in ALLOWED_NAMES:
-        return jsonify({"error": "Access denied. IDN not recognized in the database."}), 403
+        return jsonify({"error": "Access denied. IDN not recognized."}), 403
 
     try:
         response = client.chat.completions.create(
@@ -182,12 +232,10 @@ def ask():
         
         answer = response.choices[0].message.content
         
-        # Calculate Cost
         usage = response.usage
         cost = ((usage.prompt_tokens / 1000) * MODEL_PRICING["gpt-4o-mini"]["input"]) + \
                ((usage.completion_tokens / 1000) * MODEL_PRICING["gpt-4o-mini"]["output"])
         
-        # Update user cost in Postgres
         add_user_cost(name, cost)
         user_spent = get_user_spent(name)
 
