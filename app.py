@@ -6,7 +6,7 @@ import psycopg2
 app = Flask(__name__)
 
 # --- CONFIGURATION ---
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.environ.get("api_key"))
 MODEL_PRICING = {"gpt-4o-mini": {"input": 0.00015, "output": 0.0006}}
 
 # Allowed user list
@@ -104,7 +104,7 @@ CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AI Assistant</title>
+    <title>N Tech AI</title>
     <style>
         body { font-family: sans-serif; max-width: 600px; margin: 50px auto; line-height: 1.6; }
         textarea { width: 100%; height: 100px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
@@ -120,19 +120,19 @@ CHAT_TEMPLATE = """
     <!-- Link is hidden by default using CSS display: none -->
     <div class="nav"><a href="/dashboard" id="adminLink">Admin Dashboard &rarr;</a></div>
     
-    <h2>AI Assistant (Flask + Postgres Auth)</h2>
+    <h2>N Tech AI Version 1.4</h2>
     
-    <label for="userName"><strong>Enter Your Name / ID:</strong></label><br>
+    <label for="userName"><strong>Enter Your IDN:</strong></label><br>
     <!-- oninput triggers the checkName function on every keystroke -->
-    <input type="text" id="userName" placeholder="e.g., nathan or 001" oninput="checkName()"><br><br>
+    <input type="text" id="userName" placeholder="IDN is given by nathan" oninput="checkName()"><br><br>
     
     <label for="userInput"><strong>Your Prompt:</strong></label><br>
-    <textarea id="userInput" placeholder="What is on your mind?"></textarea><br><br>
+    <textarea id="userInput" placeholder="What's on your mind?"></textarea><br><br>
     
     <button onclick="askAI()">Submit Request</button>
 
     <div id="response">Waiting for input...</div>
-    <div class="stats">Your Total Spent: $<span id="totalDisplay">0.000000</span></div>
+    <div class="stats">Usage: $<span id="totalDisplay">0.000000</span></div>
 
     <script>
         // Check if the user is typing "nathan"
