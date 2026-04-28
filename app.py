@@ -6,96 +6,48 @@ import psycopg2
 app = Flask(__name__)
 
 # --- CONFIGURATION ---
-client = OpenAI(api_key=os.environ.get("api_key"))
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 MODEL_PRICING = {"gpt-4o-mini": {"input": 0.00015, "output": 0.0006}}
 
-# Allowed user list
-ALLOWED_NAMES = ["nathan", "001", "002", "003", "004", "005", "006", "007", "008", "009", "010"]
+# 1. Pull secret IDs from Render Environment
+raw_ids = os.environ.get("ALLOWED_IDS", "")
+ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
 
-# --- SECURE DATABASE URL ---
+# 2. Map IDs to Names for the Dashboard
+# You can update the names here; they stay private on the server.
+USER_MAP = {
+    "nathan": "Admin (Nathan)",
+    "001": "Jazz",
+    "002": "None",
+    "003": "Private User",
+    "004": "None",
+    "005": "Samson",
+    "006": "None",
+    "007": "Michael",
+    "008": "Lily-Grace",
+    "009": "Quinn",
+    "010": "Nael"
+}
+
+# --- DATABASE LOGIC ---
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL and "sslmode" not in DATABASE_URL:
-    if "?" in DATABASE_URL:
-        DATABASE_URL += "&sslmode=require"
-    else:
-        DATABASE_URL += "?sslmode=require"
+    DATABASE_URL += ("&" if "?" in DATABASE_URL else "?") + "sslmode=require"
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
-# --- DATABASE LOGIC ---
 def init_db():
-    if not DATABASE_URL:
-        return
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                name VARCHAR(50) PRIMARY KEY,
-                total_spent FLOAT DEFAULT 0.0
-            );
-        """)
-        for name in ALLOWED_NAMES:
-            cursor.execute("""
-                INSERT INTO users (name, total_spent) 
-                VALUES (%s, 0.0) 
-                ON CONFLICT (name) DO NOTHING;
-            """, (name,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-    except Exception as e:
-        print(f"Database Init Error: {e}")
+    if not DATABASE_URL: return
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS users (id_code VARCHAR(50) PRIMARY KEY, total_spent FLOAT DEFAULT 0.0);")
+    for id_code in ALLOWED_IDS:
+        cursor.execute("INSERT INTO users (id_code, total_spent) VALUES (%s, 0.0) ON CONFLICT (id_code) DO NOTHING;", (id_code,))
+    conn.commit()
+    cursor.close()
+    conn.close()
 
-def get_user_spent(name):
-    if not DATABASE_URL:
-        return 0.0
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT total_spent FROM users WHERE name = %s;", (name,))
-        result = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        return result[0] if result and result is not None else 0.0
-    except Exception as e:
-        print(f"Get Spent Error: {e}")
-        return 0.0
-
-def add_user_cost(name, cost):
-    if not DATABASE_URL:
-        return
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE users 
-            SET total_spent = total_spent + %s 
-            WHERE name = %s;
-        """, (cost, name))
-        conn.commit()
-        cursor.close()
-        conn.close()
-    except Exception as e:
-        print(f"Add Cost Error: {e}")
-
-def get_all_data():
-    if not DATABASE_URL:
-        return []
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT name, total_spent FROM users ORDER BY total_spent DESC;")
-        results = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return results
-    except Exception as e:
-        print(f"Get All Data Error: {e}")
-        return []
-
-# Run DB seed
 init_db()
 
 # --- HTML TEMPLATES ---
@@ -104,73 +56,43 @@ CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI</title>
+    <title>Secure AI Portal</title>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; line-height: 1.6; }
-        textarea { width: 100%; height: 100px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
-        input { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
-        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        #response { background: #f4f4f4; padding: 15px; margin-top: 20px; border-radius: 5px; min-height: 50px; white-space: pre-wrap; }
-        .stats { margin-top: 10px; font-weight: bold; color: #555; }
-        .nav { text-align: right; margin-bottom: 20px; min-height: 24px; }
-        .nav a { color: #007bff; text-decoration: none; font-weight: bold; display: none; }
+        body { font-family: sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; }
+        input, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #222; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        #adminLink { display: none; text-align: center; margin-bottom: 20px; }
+        #adminLink a { color: #007bff; text-decoration: none; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <!-- Link is hidden by default using CSS display: none -->
-    <div class="nav"><a href="/dashboard" id="adminLink">Admin Dashboard &rarr;</a></div>
-    
-    <h2>N Tech AI Version 1.4</h2>
-    
-    <label for="userName"><strong>Enter Your IDN:</strong></label><br>
-    <!-- oninput triggers the checkName function on every keystroke -->
-    <input type="text" id="userName" placeholder="IDN is given by nathan" oninput="checkName()"><br><br>
-    
-    <label for="userInput"><strong>Your Prompt:</strong></label><br>
-    <textarea id="userInput" placeholder="What's on your mind?"></textarea><br><br>
-    
+    <div id="adminLink"><a href="/dashboard">Access Admin Dashboard</a></div>
+    <h2>Secure AI Login</h2>
+    <input type="password" id="idInput" placeholder="Enter Secret ID" oninput="checkAdmin()">
+    <textarea id="promptInput" placeholder="Ask the AI..."></textarea>
     <button onclick="askAI()">Submit Request</button>
-
-    <div id="response">Waiting for input...</div>
-    <div class="stats">Usage: $<span id="totalDisplay">0.000000</span></div>
+    <p id="response" style="margin-top:20px; white-space: pre-wrap;"></p>
 
     <script>
-        // Check if the user is typing "nathan"
-        function checkName() {
-            const nameInput = document.getElementById('userName').value.trim();
-            const adminLink = document.getElementById('adminLink');
-            
-            if (nameInput === "nathan") {
-                adminLink.style.display = "inline"; // Show the button
-            } else {
-                adminLink.style.display = "none";   // Hide the button
-            }
+        function checkAdmin() {
+            // Only show dashboard link if typed ID is 'nathan'
+            document.getElementById('adminLink').style.display = 
+                (document.getElementById('idInput').value === 'nathan') ? 'block' : 'none';
         }
 
         async function askAI() {
-            const name = document.getElementById('userName').value.trim();
-            const prompt = document.getElementById('userInput').value;
-            const resDiv = document.getElementById('response');
+            const id = document.getElementById('idInput').value;
+            const prompt = document.getElementById('promptInput').value;
+            const res = document.getElementById('response');
             
-            if (!name || !prompt) {
-                alert("Please fill in both fields.");
-                return;
-            }
-            resDiv.innerText = "Thinking...";
-
+            res.innerText = "Processing...";
             const response = await fetch('/ask', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({name: name, prompt: prompt})
+                body: JSON.stringify({id_code: id, prompt: prompt})
             });
-
             const data = await response.json();
-            if (data.error) {
-                resDiv.innerText = "Error: " + data.error;
-            } else {
-                resDiv.innerText = data.answer;
-                document.getElementById('totalDisplay').innerText = data.user_spent.toFixed(6);
-            }
+            res.innerText = data.error ? "Error: " + data.error : data.answer + "\\n\\nSpent: $" + data.spent.toFixed(6);
         }
     </script>
 </body>
@@ -181,37 +103,25 @@ DASHBOARD_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Database Dashboard</title>
+    <title>Admin Dashboard</title>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; line-height: 1.6; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #007bff; color: white; }
-        tr:nth-child(even) { background-color: #f2f2f2; }
-        .nav { margin-bottom: 20px; }
-        .nav a { color: #007bff; text-decoration: none; font-weight: bold; }
+        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #f4f4f4; }
     </style>
 </head>
 <body>
-    <div class="nav"><a href="/">&larr; Back to Chat</a></div>
-    <h2>User Spend Dashboard</h2>
-    <p>Below is a live view of all tracked users sorted by the highest spenders.</p>
-    
+    <a href="/">&larr; Back</a>
+    <h2>Spending by User Name</h2>
     <table>
-        <thead>
-            <tr>
-                <th>User / ID</th>
-                <th>Total Spent ($)</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in data %}
-            <tr>
-                <td>{{ row[0] }}</td>
-                <td>${{ "%.6f"|format(row[1]) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
+        <tr><th>Name</th><th>Total Spent</th></tr>
+        {% for row in data %}
+        <tr>
+            <td>{{ user_map.get(row[0], "Unknown (" + row[0] + ")") }}</td>
+            <td>${{ "%.6f"|format(row[1]) }}</td>
+        </tr>
+        {% endfor %}
     </table>
 </body>
 </html>
@@ -225,40 +135,42 @@ def index():
 
 @app.route('/dashboard')
 def dashboard():
-    db_data = get_all_data()
-    return render_template_string(DASHBOARD_TEMPLATE, data=db_data)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id_code, total_spent FROM users ORDER BY total_spent DESC;")
+    data = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return render_template_string(DASHBOARD_TEMPLATE, data=data, user_map=USER_MAP)
 
 @app.route('/ask', methods=['POST'])
 def ask():
     data = request.json
-    name = data.get('name', '').strip()
-    user_prompt = data.get('prompt')
-
-    if name not in ALLOWED_NAMES:
-        return jsonify({"error": "Access denied. Name not recognized."}), 403
+    id_code = data.get('id_code', '').strip()
+    
+    if id_code not in ALLOWED_IDS:
+        return jsonify({"error": "Unauthorized ID"}), 403
 
     try:
-        response = client.chat.completions.create(
+        res = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": user_prompt}]
+            messages=[{"role": "user", "content": data.get('prompt')}]
         )
+        answer = res.choices[0].message.content
+        cost = ((res.usage.prompt_tokens / 1000) * 0.00015) + ((res.usage.completion_tokens / 1000) * 0.0006)
         
-        # FIX ADDED HERE: Added [0] after choices
-        answer = response.choices[0].message.content
-        
-        usage = response.usage
-        cost = ((usage.prompt_tokens / 1000) * MODEL_PRICING["gpt-4o-mini"]["input"]) + \
-               ((usage.completion_tokens / 1000) * MODEL_PRICING["gpt-4o-mini"]["output"])
-        
-        add_user_cost(name, cost)
-        user_spent = get_user_spent(name)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET total_spent = total_spent + %s WHERE id_code = %s", (cost, id_code))
+        conn.commit()
+        cursor.execute("SELECT total_spent FROM users WHERE id_code = %s", (id_code,))
+        new_total = cursor.fetchone()[0]
+        cursor.close()
+        conn.close()
 
-        return jsonify({
-            "answer": answer,
-            "user_spent": user_spent
-        })
+        return jsonify({"answer": answer, "spent": new_total})
     except Exception as e:
         return jsonify({"error": str(e)})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True)
