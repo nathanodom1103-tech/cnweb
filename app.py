@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, render_template_string, request, jsonify, redirect, url_for
 from openai import OpenAI
 import os
 import psycopg2
@@ -6,27 +6,17 @@ import psycopg2
 app = Flask(__name__)
 
 # --- CONFIGURATION ---
-client = OpenAI(api_key=os.environ.get("api_key"))
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 MODEL_PRICING = {"gpt-4o-mini": {"input": 0.00015, "output": 0.0006}}
 
-# 1. Pull secret IDs from Render Environment
 raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
 
-# 2. Map IDs to Names for the Dashboard
-# You can update the names here; they stay private on the server.
 USER_MAP = {
     "nathan": "Admin (Nathan)",
-    "001": "Jazz",
-    "002": "None",
-    "003": "Private User",
-    "004": "None",
-    "005": "Samson",
-    "006": "None",
-    "007": "Michael",
-    "008": "Lily-Grace",
-    "009": "Quinn",
-    "010": "Nael"
+    "001": "User 001", "002": "User 002", "003": "User 003",
+    "004": "User 004", "005": "User 005", "006": "User 006",
+    "007": "User 007", "008": "User 008", "009": "User 009", "010": "User 010"
 }
 
 # --- DATABASE LOGIC ---
@@ -42,30 +32,14 @@ def init_db():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # --- ADD THIS LINE TEMPORARILY TO RESET THE TABLE ---
-        cursor.execute("DROP TABLE IF EXISTS users CASCADE;")
-        
-        # Now create the new structure
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id_code VARCHAR(50) PRIMARY KEY, 
-                total_spent FLOAT DEFAULT 0.0
-            );
-        """)
-        
+        cursor.execute("CREATE TABLE IF NOT EXISTS users (id_code VARCHAR(50) PRIMARY KEY, total_spent FLOAT DEFAULT 0.0);")
         for id_code in ALLOWED_IDS:
-            cursor.execute("""
-                INSERT INTO users (id_code, total_spent) 
-                VALUES (%s, 0.0) 
-                ON CONFLICT (id_code) DO NOTHING;
-            """, (id_code,))
-            
+            cursor.execute("INSERT INTO users (id_code, total_spent) VALUES (%s, 0.0) ON CONFLICT (id_code) DO NOTHING;", (id_code,))
         conn.commit()
         cursor.close()
         conn.close()
     except Exception as e:
-        print(f"Database Init Error: {e}")
+        print(f"DB Error: {e}")
 
 init_db()
 
@@ -77,42 +51,43 @@ CHAT_TEMPLATE = """
 <head>
     <title>N Tech AI</title>
     <style>
-        body { font-family: sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; }
-        input, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #222; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        #adminLink { display: none; text-align: center; margin-bottom: 20px; }
-        #adminLink a { color: #007bff; text-decoration: none; font-size: 0.9rem; }
+        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        textarea { width: 100%; height: 120px; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
+        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; margin-bottom: 15px; }
+        button { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
+        #response { background: #f8f9fa; padding: 20px; margin-top: 25px; border-radius: 8px; border: 1px solid #ddd; min-height: 50px; white-space: pre-wrap; }
+        .stats { margin-top: 15px; font-weight: bold; color: #555; text-align: center; }
+        .nav { text-align: right; margin-bottom: 20px; }
+        .nav a { color: #007bff; text-decoration: none; font-weight: bold; display: none; }
     </style>
 </head>
 <body>
-    <div id="adminLink"><a href="/dashboard">Access Admin Dashboard</a></div>
-    <h2>N Tech AI Version 1.5</h2>
-    <h3>Warning: Please check that your IDN is still correct as N Tech switched all IDN on 4/28/2026</h3>
-    <input type="password" id="idInput" placeholder="Enter your IDN given by Nathan" oninput="checkAdmin()">
-    <textarea id="promptInput" placeholder="What's on your mind?"></textarea>
-    <button onclick="askAI()">Submit Request</button>
-    <p id="response" style="margin-top:20px; white-space: pre-wrap;"></p>
-
+    <div class="nav"><a href="/dashboard" id="adminLink">Admin Dashboard &rarr;</a></div>
+    <h2>N Tech AI Version 1.6</h2>
+    <h5>All IDN switched. Please check with Nathan for your new IDN. Notice: Database crash on 4/28/2026. Please report to nathan if you remember anything that could help restore the database. thank you!</h5>
+    <input type="password" id="idCode" placeholder="Enter Secret ID" oninput="checkAdmin()">
+    <textarea id="userInput" placeholder="Ask anything..."></textarea>
+    <button onclick="askAI()">Send to AI</button>
+    <div id="response">Waiting for request...</div>
+    <div class="stats">Session Spent: $<span id="totalDisplay">0.000000</span></div>
     <script>
         function checkAdmin() {
-            // Only show dashboard link if typed ID is 'nathan'
-            document.getElementById('adminLink').style.display = 
-                (document.getElementById('idInput').value === 'nathan') ? 'block' : 'none';
+            document.getElementById('adminLink').style.display = (document.getElementById('idCode').value.trim() === "nathanthenathano") ? "inline" : "none";
         }
-
         async function askAI() {
-            const id = document.getElementById('idInput').value;
-            const prompt = document.getElementById('promptInput').value;
-            const res = document.getElementById('response');
-            
-            res.innerText = "Thinking...";
+            const id = document.getElementById('idCode').value.trim();
+            const prompt = document.getElementById('userInput').value;
             const response = await fetch('/ask', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({id_code: id, prompt: prompt})
             });
             const data = await response.json();
-            res.innerText = data.error ? "Error: " + data.error : data.answer + "\\n\\nSpent: $" + data.spent.toFixed(6);
+            if (data.error) document.getElementById('response').innerText = "Error: " + data.error;
+            else {
+                document.getElementById('response').innerText = data.answer;
+                document.getElementById('totalDisplay').innerText = data.spent.toFixed(6);
+            }
         }
     </script>
 </body>
@@ -123,26 +98,59 @@ DASHBOARD_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI Spending Board</title>
+    <title>Admin Dashboard</title>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background: #f4f4f4; }
+        body { font-family: sans-serif; max-width: 700px; margin: 50px auto; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 15px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        .nav { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .nav a { color: #007bff; text-decoration: none; font-weight: bold; }
+        .edit-btn { background: #28a745; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <a href="/">&larr; Back</a>
-    <h2>Spending by User Name</h2>
+    <div class="nav">
+        <a href="/">&larr; Back to Chat</a>
+        <a href="/data" class="edit-btn">Manage Data (Edit Balances)</a>
+    </div>
+    <h2>User Spend Dashboard</h2>
     <table>
-        <tr><th>Name</th><th>Total Spent</th></tr>
-        {% for row in data %}
-        <tr>
-            <td>{{ user_map.get(row[0], "Unknown (" + row[0] + ")") }}</td>
-            <td>${{ "%.6f"|format(row[1]) }}</td>
-        </tr>
+        <tr><th>Assigned Name</th><th>Total Spent ($)</th></tr>
+        {% for id_code, amount in data %}
+        <tr><td>{{ user_map.get(id_code, id_code) }}</td><td>${{ "%.6f"|format(amount) }}</td></tr>
         {% endfor %}
     </table>
+</body>
+</html>
+"""
+
+DATA_EDIT_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Database</title>
+    <style>
+        body { font-family: sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; }
+        select, input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc; }
+        button { width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .back { margin-bottom: 20px; display: block; color: #007bff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="/dashboard" class="back">&larr; Back to Dashboard</a>
+    <h2>Manual Data Override</h2>
+    <form action="/update_data" method="POST">
+        <label>Select User:</label>
+        <select name="id_code">
+            {% for id_code in allowed_ids %}
+            <option value="{{ id_code }}">{{ user_map.get(id_code, id_code) }}</option>
+            {% endfor %}
+        </select>
+        <label>New Total Spent ($):</label>
+        <input type="number" step="0.000001" name="new_amount" placeholder="0.000000" required>
+        <button type="submit">Update Database</button>
+    </form>
 </body>
 </html>
 """
@@ -158,27 +166,39 @@ def dashboard():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT id_code, total_spent FROM users ORDER BY total_spent DESC;")
-    data = cursor.fetchall()
+    db_data = cursor.fetchall()
     cursor.close()
     conn.close()
-    return render_template_string(DASHBOARD_TEMPLATE, data=data, user_map=USER_MAP)
+    return render_template_string(DASHBOARD_TEMPLATE, data=db_data, user_map=USER_MAP)
+
+@app.route('/data')
+def edit_data():
+    return render_template_string(DATA_EDIT_TEMPLATE, allowed_ids=ALLOWED_IDS, user_map=USER_MAP)
+
+@app.route('/update_data', methods=['POST'])
+def update_data():
+    id_code = request.form.get('id_code')
+    new_amount = request.form.get('new_amount')
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET total_spent = %s WHERE id_code = %s", (new_amount, id_code))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        return f"Error updating database: {e}"
 
 @app.route('/ask', methods=['POST'])
 def ask():
     data = request.json
     id_code = data.get('id_code', '').strip()
-    
-    if id_code not in ALLOWED_IDS:
-        return jsonify({"error": "Unauthorized ID"}), 403
-
+    if id_code not in ALLOWED_IDS: return jsonify({"error": "Unauthorized"}), 403
     try:
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": data.get('prompt')}]
-        )
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": data.get('prompt')}])
         answer = res.choices[0].message.content
         cost = ((res.usage.prompt_tokens / 1000) * 0.00015) + ((res.usage.completion_tokens / 1000) * 0.0006)
-        
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("UPDATE users SET total_spent = total_spent + %s WHERE id_code = %s", (cost, id_code))
@@ -187,10 +207,8 @@ def ask():
         new_total = cursor.fetchone()[0]
         cursor.close()
         conn.close()
-
         return jsonify({"answer": answer, "spent": new_total})
-    except Exception as e:
-        return jsonify({"error": str(e)})
+    except Exception as e: return jsonify({"error": str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True)
