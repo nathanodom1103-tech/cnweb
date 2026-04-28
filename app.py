@@ -39,14 +39,33 @@ def get_db_connection():
 
 def init_db():
     if not DATABASE_URL: return
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("CREATE TABLE IF NOT EXISTS users (id_code VARCHAR(50) PRIMARY KEY, total_spent FLOAT DEFAULT 0.0);")
-    for id_code in ALLOWED_IDS:
-        cursor.execute("INSERT INTO users (id_code, total_spent) VALUES (%s, 0.0) ON CONFLICT (id_code) DO NOTHING;", (id_code,))
-    conn.commit()
-    cursor.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # --- ADD THIS LINE TEMPORARILY TO RESET THE TABLE ---
+        cursor.execute("DROP TABLE IF EXISTS users CASCADE;")
+        
+        # Now create the new structure
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id_code VARCHAR(50) PRIMARY KEY, 
+                total_spent FLOAT DEFAULT 0.0
+            );
+        """)
+        
+        for id_code in ALLOWED_IDS:
+            cursor.execute("""
+                INSERT INTO users (id_code, total_spent) 
+                VALUES (%s, 0.0) 
+                ON CONFLICT (id_code) DO NOTHING;
+            """, (id_code,))
+            
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"Database Init Error: {e}")
 
 init_db()
 
