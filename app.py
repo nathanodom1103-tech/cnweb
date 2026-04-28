@@ -6,7 +6,7 @@ import psycopg2
 app = Flask(__name__)
 
 # --- CONFIGURATION ---
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.environ.get("api_key"))
 MODEL_PRICING = {"gpt-4o-mini": {"input": 0.00015, "output": 0.0006}}
 
 # 1. Pull secret IDs from Render Environment
@@ -56,7 +56,7 @@ CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Secure AI Portal</title>
+    <title>N Tech AI</title>
     <style>
         body { font-family: sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; }
         input, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
@@ -67,9 +67,10 @@ CHAT_TEMPLATE = """
 </head>
 <body>
     <div id="adminLink"><a href="/dashboard">Access Admin Dashboard</a></div>
-    <h2>Secure AI Login</h2>
-    <input type="password" id="idInput" placeholder="Enter Secret ID" oninput="checkAdmin()">
-    <textarea id="promptInput" placeholder="Ask the AI..."></textarea>
+    <h2>N Tech AI Version 1.5</h2>
+    <h3>Warning: Please check that your IDN is still correct as N Tech switched all IDN on 4/28/2026</h3>
+    <input type="password" id="idInput" placeholder="Enter your IDN given by Nathan" oninput="checkAdmin()">
+    <textarea id="promptInput" placeholder="What's on your mind?"></textarea>
     <button onclick="askAI()">Submit Request</button>
     <p id="response" style="margin-top:20px; white-space: pre-wrap;"></p>
 
@@ -85,7 +86,7 @@ CHAT_TEMPLATE = """
             const prompt = document.getElementById('promptInput').value;
             const res = document.getElementById('response');
             
-            res.innerText = "Processing...";
+            res.innerText = "Thinking...";
             const response = await fetch('/ask', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -103,7 +104,7 @@ DASHBOARD_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Dashboard</title>
+    <title>N Tech AI Spending Board</title>
     <style>
         body { font-family: sans-serif; max-width: 600px; margin: 50px auto; }
         table { width: 100%; border-collapse: collapse; }
