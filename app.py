@@ -11,8 +11,11 @@ client = OpenAI(api_key=os.environ.get("api_key"))
 # Updated pricing to include GPT-4o
 MODEL_PRICING = {
     "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
-    "gpt-4o": {"input": 0.005, "output": 0.015}
+    "gpt-4o": {"input": 0.005, "output": 0.015},
+    "gpt-5.4-mini": {"input": 0.0075, "output": 0.00450}, # Placeholder for 5.4 mini
+    "gpt-5.4": {"input": 0.025, "output": 0.015}          # Placeholder for 5.4
 }
+
 
 raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
@@ -72,15 +75,18 @@ CHAT_TEMPLATE = """
     <div class="model-selector">
         <label style="font-size: 12px; color: #666; display: block;">AI Model:</label>
         <select id="modelSelect">
-            <option value="gpt-4o-mini">Standard</option>
-            <option value="gpt-4o">Smart</option>
+            <option value="gpt-4o-mini">N Tech 1.7 Basic</option>
+            <option value="gpt-4o">N Tech 1.7 Smart</option>
+            <option value="gpt-5.4-mini">N Tech 1.8 Smart</option>
+            <option value="gpt-5.4">N Tech 1.8 Ultra</option>
         </select>
+
     </div>
 
     <div class="nav"><a href="/dashboard" id="adminLink">Admin Dashboard &rarr;</a></div>
     
-    <h2 style="text-align: center;">N Tech AI 1.7</h2>
-    <h5> style="text-align: center;">N Tech AI now allows you to switch between Smart and Standard modes! </h5>
+    <h2 style="text-align: center;">N Tech AI 1.8</h2>
+    <h5 style="text-align: center;">N Tech AI now allows you to switch between Smart and Basic and even Ultra models! </h5>
     <input type="password" id="idCode" placeholder="Enter IDN" oninput="checkAdmin()">
     <textarea id="userInput" placeholder="Ask anything..."></textarea>
     
@@ -91,7 +97,7 @@ CHAT_TEMPLATE = """
 
     <script>
         function checkAdmin() {
-            document.getElementById('adminLink').style.display = (document.getElementById('idCode').value.trim() === "nathan") ? "inline" : "none";
+            document.getElementById('adminLink').style.display = (document.getElementById('idCode').value.trim() === "nathanthenathano") ? "inline" : "none";
         }
 
         async function askAI() {
@@ -105,9 +111,9 @@ CHAT_TEMPLATE = """
                 return;
             }
 
-            // Warning for expensive model
-            if (model === "gpt-4o") {
-                const proceed = confirm("WARNING: GPT-4o is significantly more expensive than Mini. Your Spendings will increase much faster. Continue?");
+            // Warning for any expensive model (anything not gpt-4o-mini)
+            if (model !== "gpt-4o-mini") {
+                const proceed = confirm(`WARNING: ${model} is a high-cost model. Your Spent will increase significantly faster than using 1.7 Basic. Continue?`);
                 if (!proceed) return;
             }
 
