@@ -7,7 +7,12 @@ app = Flask(__name__)
 
 # --- CONFIGURATION ---
 client = OpenAI(api_key=os.environ.get("api_key"))
-MODEL_PRICING = {"gpt-4o-mini": {"input": 0.00015, "output": 0.0006}}
+
+# Updated pricing to include GPT-4o
+MODEL_PRICING = {
+    "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
+    "gpt-4o": {"input": 0.005, "output": 0.015}
+}
 
 raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
@@ -51,42 +56,79 @@ CHAT_TEMPLATE = """
 <head>
     <title>N Tech AI</title>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; position: relative; }
         textarea { width: 100%; height: 120px; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
         input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; margin-bottom: 15px; }
         button { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
         #response { background: #f8f9fa; padding: 20px; margin-top: 25px; border-radius: 8px; border: 1px solid #ddd; min-height: 50px; white-space: pre-wrap; }
         .stats { margin-top: 15px; font-weight: bold; color: #555; text-align: center; }
-        .nav { text-align: right; margin-bottom: 20px; }
+        .nav { text-align: right; margin-bottom: 20px; min-height: 24px; }
         .nav a { color: #007bff; text-decoration: none; font-weight: bold; display: none; }
+        .model-selector { position: absolute; top: 10px; left: 20px; }
+        select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; background: white; cursor: pointer; }
     </style>
 </head>
 <body>
+    <div class="model-selector">
+        <label style="font-size: 12px; color: #666; display: block;">AI Model:</label>
+        <select id="modelSelect">
+            <option value="gpt-4o-mini">Standard</option>
+            <option value="gpt-4o">Smart</option>
+        </select>
+    </div>
+
     <div class="nav"><a href="/dashboard" id="adminLink">Admin Dashboard &rarr;</a></div>
-    <h2>N Tech AI Version 1.6</h2>
-    <h5>All IDN switched. Please check with Nathan for your new IDN. Notice: Database crash on 4/28/2026. Please report to nathan if you remember anything that could help restore the database. thank you!</h5>
-    <input type="password" id="idCode" placeholder="Enter Secret ID" oninput="checkAdmin()">
+    
+    <h2 style="text-align: center;">N Tech AI 1.7</h2>
+    <h5> style="text-align: center;">N Tech AI now allows you to switch between Smart and Standard modes! </h5>
+    <input type="password" id="idCode" placeholder="Enter IDN" oninput="checkAdmin()">
     <textarea id="userInput" placeholder="Ask anything..."></textarea>
+    
     <button onclick="askAI()">Send to AI</button>
+
     <div id="response">Waiting for request...</div>
     <div class="stats">Session Spent: $<span id="totalDisplay">0.000000</span></div>
+
     <script>
         function checkAdmin() {
-            document.getElementById('adminLink').style.display = (document.getElementById('idCode').value.trim() === "nathanthenathano") ? "inline" : "none";
+            document.getElementById('adminLink').style.display = (document.getElementById('idCode').value.trim() === "nathan") ? "inline" : "none";
         }
+
         async function askAI() {
             const id = document.getElementById('idCode').value.trim();
             const prompt = document.getElementById('userInput').value;
-            const response = await fetch('/ask', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({id_code: id, prompt: prompt})
-            });
-            const data = await response.json();
-            if (data.error) document.getElementById('response').innerText = "Error: " + data.error;
-            else {
-                document.getElementById('response').innerText = data.answer;
-                document.getElementById('totalDisplay').innerText = data.spent.toFixed(6);
+            const model = document.getElementById('modelSelect').value;
+            const resDiv = document.getElementById('response');
+            
+            if (!id || !prompt) {
+                alert("Please enter both IDN and message.");
+                return;
+            }
+
+            // Warning for expensive model
+            if (model === "gpt-4o") {
+                const proceed = confirm("WARNING: GPT-4o is significantly more expensive than Mini. Your Spendings will increase much faster. Continue?");
+                if (!proceed) return;
+            }
+
+            resDiv.innerText = "Processing...";
+
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({id_code: id, prompt: prompt, model: model})
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    resDiv.innerText = "Error: " + data.error;
+                } else {
+                    resDiv.innerText = data.answer;
+                    document.getElementById('totalDisplay').innerText = data.spent.toFixed(6);
+                }
+            } catch (e) {
+                resDiv.innerText = "Connection failed.";
             }
         }
     </script>
@@ -194,21 +236,36 @@ def update_data():
 def ask():
     data = request.json
     id_code = data.get('id_code', '').strip()
-    if id_code not in ALLOWED_IDS: return jsonify({"error": "Unauthorized"}), 403
+    selected_model = data.get('model', 'gpt-4o-mini')
+    user_prompt = data.get('prompt')
+
+    if id_code not in ALLOWED_IDS: 
+        return jsonify({"error": "Unauthorized Access ID"}), 403
+
     try:
-        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": data.get('prompt')}])
+        res = client.chat.completions.create(
+            model=selected_model, 
+            messages=[{"role": "user", "content": user_prompt}]
+        )
         answer = res.choices[0].message.content
-        cost = ((res.usage.prompt_tokens / 1000) * 0.00015) + ((res.usage.completion_tokens / 1000) * 0.0006)
+        
+        # Determine pricing based on actual model used
+        pricing = MODEL_PRICING.get(selected_model, MODEL_PRICING["gpt-4o-mini"])
+        cost = ((res.usage.prompt_tokens / 1000) * pricing["input"]) + \
+               ((res.usage.completion_tokens / 1000) * pricing["output"])
+        
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("UPDATE users SET total_spent = total_spent + %s WHERE id_code = %s", (cost, id_code))
         conn.commit()
         cursor.execute("SELECT total_spent FROM users WHERE id_code = %s", (id_code,))
-        new_total = cursor.fetchone()[0]
+        new_total = cursor.fetchone()
         cursor.close()
         conn.close()
-        return jsonify({"answer": answer, "spent": new_total})
-    except Exception as e: return jsonify({"error": str(e)})
+
+        return jsonify({"answer": answer, "spent": new_total[0]})
+    except Exception as e: 
+        return jsonify({"error": str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True)
