@@ -22,8 +22,10 @@ ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
 USER_MAP = {
     "nathan": "Admin (Nathan)",
     "1865": "Michael", "002": "User 002", "003": "User 003",
-    "1793": "Quinn", "005": "User 005", "006": "User 006",
-    "007": "User 007", "008": "User 008", "004": "User 004", "010": "User 010"
+    "1793": "Quinn", "005": "User 005", "006": "User 006", "010": "User 010",
+    "9823": "Market day 1", "4265": "Market day 2", "5892": "Market day 3",
+    "1285": "Market day 4", "6723": "Market day 5", "7531": "Market day 6",
+    "1596": "Market day 7", "4652": "Market day 8", "9187": "Market day 9",
 }
 
 # --- DATABASE LOGIC ---
