@@ -19,7 +19,7 @@ MODEL_PRICING = {
 raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
 
-USER_MAP = {␊
+USER_MAP = {
     "nathan": "Admin (Nathan)",
     "1865": "Michael", "002": "User 002", "003": "User 003",
     "1793": "Quinn", "005": "User 005", "006": "User 006", "010": "User 010",
