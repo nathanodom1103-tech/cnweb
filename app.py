@@ -38,6 +38,17 @@ def get_allowed_ids():
     ids.update(USER_MAP.keys())
     return sorted(ids)
 
+
+def parse_credit_limit(raw_value):
+    cleaned = (raw_value or "").strip()
+    if not cleaned:
+        return None
+    try:
+        value = float(cleaned)
+    except (TypeError, ValueError):
+        return "invalid"
+    return value if value >= 0 else "invalid"
+
 # --- DATABASE LOGIC ---
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL and "sslmode" not in DATABASE_URL:
@@ -45,6 +56,8 @@ if DATABASE_URL and "sslmode" not in DATABASE_URL:
 
 
 def get_db_connection():
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is not configured")
     return psycopg2.connect(DATABASE_URL)
 
 
@@ -98,7 +111,82 @@ CHAT_TEMPLATE = """
             --primary: #2563eb;
             --user: #e9f2ff;
             --assistant: #f7f7f8;
-
+            --muted: #667085;
+        }
+        body {
+            font-family: Inter, system-ui, sans-serif;
+            max-width: 860px;
+            margin: 24px auto;
+            padding: 16px;
+            background: var(--bg);
+            color: #111827;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+            padding: 20px;
+        }
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 12px 0;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            box-sizing: border-box;
+            background: #fff;
+        }
+        textarea { min-height: 110px; resize: vertical; }
+        button {
+            padding: 12px 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+        }
+        .muted { color: var(--muted); font-size: 0.9rem; }
+        .chat {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            margin-top: 12px;
+            min-height: 200px;
+            max-height: 440px;
+            overflow-y: auto;
+        }
+        .msg { padding: 10px 12px; border-radius: 10px; margin-bottom: 10px; white-space: pre-wrap; }
+        .msg.user { background: var(--user); }
+        .msg.assistant { background: var(--assistant); }
+        .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .toggle { display: flex; align-items: center; gap: 8px; }
+        .toggle input { width: auto; }
+        .nav a { color: var(--primary); text-decoration: none; font-weight: 600; display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="topbar">
+            <div>
+                <h2 style="margin:0;">N Tech AI 1.9</h2>
+                <div class="muted">1.9 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra</div>
+            </div>
             <div class="nav"><a href="/dashboard" id="adminLink">Admin Dashboard →</a></div>
         </div>
 
@@ -157,7 +245,22 @@ CHAT_TEMPLATE = """
             return div.innerHTML;
         }
 
+        function clearHistory() {
+            messages = [];
+            renderHistory();
+            document.getElementById('status').innerText = 'Chat cleared';
+        }
 
+        async function askAI() {
+            const id = document.getElementById('idCode').value.trim();
+            const prompt = document.getElementById('userInput').value.trim();
+            const model = document.getElementById('modelSelect').value;
+            const memory = document.getElementById('memoryToggle').checked;
+            const status = document.getElementById('status');
+
+            if (!id || !prompt) {
+                alert('Please enter both IDN and message.');
+                return;
             }
 
             messages.push({role: 'user', content: prompt});
@@ -294,24 +397,28 @@ def index():
 
 @app.route('/dashboard')
 def dashboard():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id_code, total_spent, display_name, credit_limit FROM users ORDER BY total_spent DESC;")
-    db_data = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return render_template_string(DASHBOARD_TEMPLATE, data=db_data, user_map=USER_MAP)
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id_code, total_spent, display_name, credit_limit FROM users ORDER BY total_spent DESC;")
+        db_data = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template_string(DASHBOARD_TEMPLATE, data=db_data, user_map=USER_MAP)
+    except Exception as e:
+        return f"Dashboard unavailable: {e}", 500
 
 
 @app.route('/add_account', methods=['POST'])
 def add_account():
     id_code = normalize_id_code(request.form.get('id_code'))
     display_name = (request.form.get('display_name') or '').strip() or id_code
-    credit_limit_raw = (request.form.get('credit_limit') or '').strip()
-    credit_limit = float(credit_limit_raw) if credit_limit_raw else None
+    credit_limit = parse_credit_limit(request.form.get('credit_limit'))
 
     if not id_code:
         return "ID code is required", 400
+    if credit_limit == "invalid":
+        return "Invalid credit amount", 400
 
     try:
         conn = get_db_connection()
@@ -354,7 +461,7 @@ def update_data():
         conn.close()
         return redirect(url_for('dashboard'))
     except Exception as e:
-        return f"Error updating database: {e}"
+        return f"Error updating database: {e}", 500
 
 
 @app.route('/ask', methods=['POST'])
