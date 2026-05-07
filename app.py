@@ -19,7 +19,7 @@ MODEL_PRICING = {
 raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
 
-USER_MAP = {
+USER_MAP = {␊
     "nathan": "Admin (Nathan)",
     "1865": "Michael", "002": "User 002", "003": "User 003",
     "1793": "Quinn", "005": "User 005", "006": "User 006", "010": "User 010",
@@ -27,6 +27,16 @@ USER_MAP = {
     "1285": "Market day 4", "6723": "Market day 5", "7531": "Market day 6",
     "1596": "Market day 7", "4652": "Market day 8", "9187": "Market day 9",
 }
+
+
+def normalize_id_code(id_code):
+    return (id_code or "").strip()
+
+
+def get_allowed_ids():
+    ids = set(ALLOWED_IDS)
+    ids.update(USER_MAP.keys())
+    return sorted(ids)
 
 # --- DATABASE LOGIC ---
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -38,15 +48,31 @@ def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
 
-def init_db():
+def init_db():␊
     if not DATABASE_URL:
         return
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS users (id_code VARCHAR(50) PRIMARY KEY, total_spent FLOAT DEFAULT 0.0);")
-        for id_code in ALLOWED_IDS:
-            cursor.execute("INSERT INTO users (id_code, total_spent) VALUES (%s, 0.0) ON CONFLICT (id_code) DO NOTHING;", (id_code,))
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id_code VARCHAR(50) PRIMARY KEY,
+                total_spent FLOAT DEFAULT 0.0,
+                display_name VARCHAR(255),
+                credit_limit FLOAT
+            );
+        """)
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(255);")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS credit_limit FLOAT;")
+        for id_code in get_allowed_ids():
+            cursor.execute(
+                """
+                INSERT INTO users (id_code, total_spent, display_name)
+                VALUES (%s, 0.0, %s)
+                ON CONFLICT (id_code) DO UPDATE SET display_name = EXCLUDED.display_name;
+                """,
+                (id_code, USER_MAP.get(id_code, id_code))
+            )
         conn.commit()
         cursor.close()
         conn.close()
@@ -72,82 +98,7 @@ CHAT_TEMPLATE = """
             --primary: #2563eb;
             --user: #e9f2ff;
             --assistant: #f7f7f8;
-            --muted: #667085;
-        }
-        body {
-            font-family: Inter, system-ui, sans-serif;
-            max-width: 860px;
-            margin: 24px auto;
-            padding: 16px;
-            background: var(--bg);
-            color: #111827;
-        }
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
-            padding: 20px;
-        }
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-        .controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin: 12px 0;
-        }
-        input, textarea, select {
-            width: 100%;
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            box-sizing: border-box;
-            background: #fff;
-        }
-        textarea { min-height: 110px; resize: vertical; }
-        button {
-            padding: 12px 16px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 600;
-            width: 100%;
-        }
-        .muted { color: var(--muted); font-size: 0.9rem; }
-        .chat {
-            background: #fff;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 14px;
-            margin-top: 12px;
-            min-height: 200px;
-            max-height: 440px;
-            overflow-y: auto;
-        }
-        .msg { padding: 10px 12px; border-radius: 10px; margin-bottom: 10px; white-space: pre-wrap; }
-        .msg.user { background: var(--user); }
-        .msg.assistant { background: var(--assistant); }
-        .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-        .toggle { display: flex; align-items: center; gap: 8px; }
-        .toggle input { width: auto; }
-        .nav a { color: var(--primary); text-decoration: none; font-weight: 600; display: none; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <div class="topbar">
-            <div>
-                <h2 style="margin:0;">N Tech AI 1.9</h2>
-                <div class="muted">1.9 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra</div>
-            </div>
+
             <div class="nav"><a href="/dashboard" id="adminLink">Admin Dashboard →</a></div>
         </div>
 
@@ -177,6 +128,10 @@ CHAT_TEMPLATE = """
             <div class="muted">Session Spent: $<span id="totalDisplay">0.000000</span></div>
             <div class="muted" id="status">Ready</div>
         </div>
+        <div class="muted" style="margin-top:8px;">Credits Used: <span id="creditsUsed">0.00</span><span id="creditLimitText"></span></div>
+        <div style="margin-top:6px;background:#e5e7eb;border-radius:9999px;height:10px;overflow:hidden;">
+            <div id="creditsBar" style="height:10px;width:0%;background:#2563eb;"></div>
+        </div>
     </div>
 
     <script>
@@ -202,22 +157,7 @@ CHAT_TEMPLATE = """
             return div.innerHTML;
         }
 
-        function clearHistory() {
-            messages = [];
-            renderHistory();
-            document.getElementById('status').innerText = 'Chat cleared';
-        }
 
-        async function askAI() {
-            const id = document.getElementById('idCode').value.trim();
-            const prompt = document.getElementById('userInput').value.trim();
-            const model = document.getElementById('modelSelect').value;
-            const memory = document.getElementById('memoryToggle').checked;
-            const status = document.getElementById('status');
-
-            if (!id || !prompt) {
-                alert('Please enter both IDN and message.');
-                return;
             }
 
             messages.push({role: 'user', content: prompt});
@@ -245,6 +185,18 @@ CHAT_TEMPLATE = """
                 } else {
                     messages.push({role: 'assistant', content: data.answer});
                     document.getElementById('totalDisplay').innerText = Number(data.spent || 0).toFixed(6);
+                    const used = Number(data.credits_used || 0);
+                    const limit = data.credit_limit;
+                    document.getElementById('creditsUsed').innerText = used.toFixed(2);
+                    const limitText = document.getElementById('creditLimitText');
+                    const bar = document.getElementById('creditsBar');
+                    if (limit !== null && limit !== undefined) {
+                        limitText.innerText = ` / ${Number(limit).toFixed(2)}`;
+                        bar.style.width = `${Math.min((used / Number(limit)) * 100, 100)}%`;
+                    } else {
+                        limitText.innerText = '';
+                        bar.style.width = `${Math.min(used, 100)}%`;
+                    }
                     status.innerText = memory ? 'Replied (memory on)' : 'Replied (memory off)';
                 }
                 renderHistory();
@@ -282,10 +234,22 @@ DASHBOARD_TEMPLATE = """
         <a href="/data" class="edit-btn">Manage Data (Edit Balances)</a>
     </div>
     <h2>User Spend Dashboard</h2>
+    <form action="/add_account" method="POST" style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end;">
+        <div><label>ID Code</label><input name="id_code" required></div>
+        <div><label>Display Name</label><input name="display_name" required></div>
+        <div><label>Credit Limit</label><input name="credit_limit" type="number" step="0.01" min="0" placeholder="e.g. 10"></div>
+        <button type="submit" class="edit-btn" style="border:none;cursor:pointer;">Add Account</button>
+    </form>
     <table>
-        <tr><th>Assigned Name</th><th>Total Spent ($)</th></tr>
-        {% for id_code, amount in data %}
-        <tr><td>{{ user_map.get(id_code, id_code) }}</td><td>${{ "%.6f"|format(amount) }}</td></tr>
+        <tr><th>Assigned Name</th><th>ID Code</th><th>Total Spent ($)</th><th>Credits Used</th><th>Credit Limit</th></tr>
+        {% for row in data %}
+        <tr>
+            <td>{{ row[2] or user_map.get(row[0], row[0]) }}</td>
+            <td>{{ row[0] }}</td>
+            <td>${{ "%.6f"|format(row[1]) }}</td>
+            <td>{{ "%.2f"|format(row[1] * 1000) }}</td>
+            <td>{{ "%.2f"|format(row[3]) if row[3] is not none else "—" }}</td>
+        </tr>
         {% endfor %}
     </table>
 </body>
@@ -329,19 +293,52 @@ def index():
 
 
 @app.route('/dashboard')
-def dashboard():
+def dashboard():␊
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id_code, total_spent FROM users ORDER BY total_spent DESC;")
+    cursor.execute("SELECT id_code, total_spent, display_name, credit_limit FROM users ORDER BY total_spent DESC;")
     db_data = cursor.fetchall()
     cursor.close()
     conn.close()
     return render_template_string(DASHBOARD_TEMPLATE, data=db_data, user_map=USER_MAP)
 
 
+@app.route('/add_account', methods=['POST'])
+def add_account():
+    id_code = normalize_id_code(request.form.get('id_code'))
+    display_name = (request.form.get('display_name') or '').strip() or id_code
+    credit_limit_raw = (request.form.get('credit_limit') or '').strip()
+    credit_limit = float(credit_limit_raw) if credit_limit_raw else None
+
+    if not id_code:
+        return "ID code is required", 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO users (id_code, total_spent, display_name, credit_limit)
+            VALUES (%s, 0.0, %s, %s)
+            ON CONFLICT (id_code) DO UPDATE
+            SET display_name = EXCLUDED.display_name, credit_limit = EXCLUDED.credit_limit;
+            """,
+            (id_code, display_name, credit_limit)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        if id_code not in ALLOWED_IDS:
+            ALLOWED_IDS.append(id_code)
+        USER_MAP[id_code] = display_name
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        return f"Error adding account: {e}", 500
+
+
 @app.route('/data')
 def edit_data():
-    return render_template_string(DATA_EDIT_TEMPLATE, allowed_ids=ALLOWED_IDS, user_map=USER_MAP)
+    return render_template_string(DATA_EDIT_TEMPLATE, allowed_ids=get_allowed_ids(), user_map=USER_MAP)
 
 
 @app.route('/update_data', methods=['POST'])
@@ -363,14 +360,14 @@ def update_data():
 @app.route('/ask', methods=['POST'])
 def ask():
     data = request.json or {}
-    id_code = data.get('id_code', '').strip()
+    id_code = normalize_id_code(data.get('id_code', ''))
     selected_model = data.get('model', 'gpt-4o-mini')
     user_prompt = (data.get('prompt') or '').strip()
     memory_enabled = bool(data.get('memory', True))
     history = data.get('history', []) if memory_enabled else []
 
-    if id_code not in ALLOWED_IDS:
-        return jsonify({"error": "Unauthorized Access ID"}), 403
+    if id_code not in get_allowed_ids():
+        return jsonify({"error": "Unauthorized Access ID"}), 403␊
 
     if selected_model not in MODEL_PRICING:
         return jsonify({"error": "Unsupported model selected."}), 400
@@ -395,14 +392,30 @@ def ask():
 
         conn = get_db_connection()
         cursor = conn.cursor()
+        cursor.execute("SELECT total_spent, credit_limit FROM users WHERE id_code = %s", (id_code,))
+        current = cursor.fetchone()
+        current_spent = current[0] if current else 0.0
+        credit_limit = current[1] if current else None
+        next_credits = (current_spent + cost) * 1000
+        if credit_limit is not None and next_credits > credit_limit:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Invalid credit amount"}), 400
+
         cursor.execute("UPDATE users SET total_spent = total_spent + %s WHERE id_code = %s", (cost, id_code))
         conn.commit()
-        cursor.execute("SELECT total_spent FROM users WHERE id_code = %s", (id_code,))
+        cursor.execute("SELECT total_spent, credit_limit FROM users WHERE id_code = %s", (id_code,))
         new_total = cursor.fetchone()
         cursor.close()
         conn.close()
 
-        return jsonify({"answer": answer, "spent": new_total[0], "cost": cost})
+        return jsonify({
+            "answer": answer,
+            "spent": new_total[0],
+            "cost": cost,
+            "credits_used": new_total[0] * 1000,
+            "credit_limit": new_total[1]
+        })
     except Exception as e:
         return jsonify({"error": str(e)})
 
