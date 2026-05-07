@@ -15,6 +15,9 @@ MODEL_PRICING = {
     "gpt-5.4-nano": {"input": 0.00005, "output": 0.0002},
     "gpt-5.4-mini": {"input": 0.0003, "output": 0.0012},
 }
+IMAGE_PRICING = {
+    "low": 0.02  # flat USD cost per generated image
+}
 
 raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
@@ -101,7 +104,7 @@ CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI</title>
+    <title>N Tech AI 2.0</title>
     <style>
         :root {
             color-scheme: light;
@@ -178,16 +181,21 @@ CHAT_TEMPLATE = """
         .toggle { display: flex; align-items: center; gap: 8px; }
         .toggle input { width: auto; }
         .nav a { color: var(--primary); text-decoration: none; font-weight: 600; display: none; }
+        .nav a.secondary { display: inline; margin-right: 12px; }
     </style>
 </head>
 <body>
     <div class="card">
         <div class="topbar">
             <div>
-                <h2 style="margin:0;">N Tech AI 1.9</h2>
+                <h2 style="margin:0;">N Tech AI</h2>
+                <h1 style="margin:0;">2.0</h1>
                 <div class="muted">1.9 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra</div>
             </div>
-            <div class="nav"><a href="/dashboard" id="adminLink">Admin Dashboard →</a></div>
+            <div class="nav">
+                <a href="/image" class="secondary">Image Generator</a>
+                <a href="/dashboard" id="adminLink">Admin Dashboard →</a>
+            </div>
         </div>
 
         <div class="controls">
@@ -389,10 +397,87 @@ DATA_EDIT_TEMPLATE = """
 </html>
 """
 
+IMAGE_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Images Generator</title>
+    <style>
+        body { font-family: Inter, system-ui, sans-serif; max-width: 860px; margin: 24px auto; padding: 16px; background: #f5f7fb; }
+        .card { background: #fff; border: 1px solid #d9e1ee; border-radius: 16px; padding: 20px; }
+        textarea, input, button { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d9e1ee; box-sizing: border-box; }
+        textarea { min-height: 120px; resize: vertical; margin-bottom: 10px; }
+        button { background: #2563eb; color: white; border: none; font-weight: 600; cursor: pointer; }
+        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .muted { color: #667085; font-size: 0.9rem; }
+        img { max-width: 100%; border-radius: 12px; margin-top: 12px; border: 1px solid #d9e1ee; }
+        a { color: #2563eb; text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="row">
+            <a href="/">&larr; Back to Chat</a>
+            <div class="muted">Model: N Tech Images • Version: 2.0 </div>
+        </div>
+        <h2 style="margin-top:0;">Generate Images (Experimental)</h2>
+        <input id="idCode" type="password" placeholder="Enter IDN">
+        <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
+        <button onclick="generateImage()">Generate</button>
+        <div id="status" class="muted" style="margin-top:10px;">Ready</div>
+        <div class="muted" style="margin-top:6px;">Session Spent: $<span id="imageSpent">0.000000</span></div>
+        <div class="muted">Credits Used: <span id="imageCredits">0.00</span><span id="imageCreditLimit"></span></div>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function generateImage() {
+            const idCode = document.getElementById('idCode').value.trim();
+            const prompt = document.getElementById('prompt').value.trim();
+            const status = document.getElementById('status');
+            const result = document.getElementById('result');
+            if (!idCode || !prompt) {
+                alert('Please enter both IDN and prompt.');
+                return;
+            }
+            status.innerText = 'Generating...';
+            result.innerHTML = '';
+            try {
+                const response = await fetch('/generate_image', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({id_code: idCode, prompt})
+                });
+                const data = await response.json();
+                if (data.error) {
+                    status.innerText = 'Error';
+                    result.innerHTML = `<div class="muted">Error: ${data.error}</div>`;
+                    return;
+                }
+                document.getElementById('imageSpent').innerText = Number(data.spent || 0).toFixed(6);
+                document.getElementById('imageCredits').innerText = Number(data.credits_used || 0).toFixed(2);
+                document.getElementById('imageCreditLimit').innerText = (data.credit_limit !== null && data.credit_limit !== undefined)
+                    ? ` / ${Number(data.credit_limit).toFixed(2)}`
+                    : '';
+                status.innerText = 'Done';
+                result.innerHTML = `<img alt="Generated image" src="data:image/png;base64,${data.image_b64}">`;
+            } catch (e) {
+                status.innerText = 'Connection failed';
+            }
+        }
+    </script>
+</body>
+</html>
+"""
+
 
 @app.route('/')
 def index():
     return render_template_string(CHAT_TEMPLATE)
+
+@app.route('/image')
+def image_page():
+    return render_template_string(IMAGE_TEMPLATE)
 
 
 @app.route('/dashboard')
@@ -525,6 +610,54 @@ def ask():
         })
     except Exception as e:
         return jsonify({"error": str(e)})
+
+
+@app.route('/generate_image', methods=['POST'])
+def generate_image():
+    data = request.json or {}
+    id_code = normalize_id_code(data.get('id_code', ''))
+    prompt = (data.get('prompt') or '').strip()
+
+    if id_code not in get_allowed_ids():
+        return jsonify({"error": "Unauthorized Access ID"}), 403
+    if not prompt:
+        return jsonify({"error": "Prompt is empty."}), 400
+
+    try:
+        image_cost = IMAGE_PRICING["low"]
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT total_spent, credit_limit FROM users WHERE id_code = %s", (id_code,))
+        current = cursor.fetchone()
+        current_spent = current[0] if current else 0.0
+        credit_limit = current[1] if current else None
+        next_credits = (current_spent + image_cost) * 1000
+        if credit_limit is not None and next_credits > credit_limit:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Invalid credit amount"}), 400
+
+        res = client.images.generate(
+            model="gpt-image-2",
+            prompt=prompt,
+            quality="low",
+            size="1024x1024"
+        )
+        cursor.execute("UPDATE users SET total_spent = total_spent + %s WHERE id_code = %s", (image_cost, id_code))
+        conn.commit()
+        cursor.execute("SELECT total_spent, credit_limit FROM users WHERE id_code = %s", (id_code,))
+        new_total = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return jsonify({
+            "image_b64": res.data[0].b64_json,
+            "spent": new_total[0],
+            "credits_used": new_total[0] * 1000,
+            "credit_limit": new_total[1],
+            "cost": image_cost
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':
