@@ -48,7 +48,7 @@ def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
 
-def init_db():␊
+def init_db():
     if not DATABASE_URL:
         return
     try:
@@ -293,7 +293,7 @@ def index():
 
 
 @app.route('/dashboard')
-def dashboard():␊
+def dashboard():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT id_code, total_spent, display_name, credit_limit FROM users ORDER BY total_spent DESC;")
@@ -367,7 +367,7 @@ def ask():
     history = data.get('history', []) if memory_enabled else []
 
     if id_code not in get_allowed_ids():
-        return jsonify({"error": "Unauthorized Access ID"}), 403␊
+        return jsonify({"error": "Unauthorized Access ID"}), 403
 
     if selected_model not in MODEL_PRICING:
         return jsonify({"error": "Unsupported model selected."}), 400
