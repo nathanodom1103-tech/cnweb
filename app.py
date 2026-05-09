@@ -10,6 +10,8 @@ def build_openai_client():
     api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("api_key")
     organization = os.environ.get("OPENAI_ORG_ID") or os.environ.get("OPENAI_ORGANIZATION")
     project = os.environ.get("OPENAI_PROJECT_ID")
+    if project and project.startswith("sk-"):
+        project = None
 
     kwargs = {"api_key": api_key}
     if organization:
@@ -117,7 +119,7 @@ CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI 2.0</title>
+    <title>N Tech AI</title>
     <style>
         :root {
             color-scheme: light;
@@ -204,7 +206,7 @@ CHAT_TEMPLATE = """
                 <h2 style="margin:0;">N Tech AI</h2>
                 <h1 style="margin:0;">2.1</h1>
                 <div class="muted">1.9 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, (model not reccomended)</div>
-            </div>
+
             <div class="nav">
                 <a href="/image" class="secondary">Image Generator</a>
                 <a href="/dashboard" id="adminLink">Admin Dashboard →</a>
@@ -415,7 +417,7 @@ IMAGE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI Image Genreration</title>
+    <title>Image Generator</title>
     <style>
         body { font-family: Inter, system-ui, sans-serif; max-width: 860px; margin: 24px auto; padding: 16px; background: #f5f7fb; }
         .card { background: #fff; border: 1px solid #d9e1ee; border-radius: 16px; padding: 20px; }
@@ -432,9 +434,9 @@ IMAGE_TEMPLATE = """
     <div class="card">
         <div class="row">
             <a href="/">&larr; Back to Chat</a>
-            <div class="muted">N Tech AI • Image 2.1 Smart</div>
+            <div class="muted">Model: GPT Image 2 • Quality: low</div>
         </div>
-        <h2 style="margin-top:0;">N Tech AI Image Generation</h2>
+        <h2 style="margin-top:0;">Generate Image</h2>
         <input id="idCode" type="password" placeholder="Enter IDN">
         <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
         <button onclick="generateImage()">Generate</button>
@@ -672,8 +674,17 @@ def generate_image():
         })
     except Exception as e:
         msg = str(e)
-        if "organization" in msg.lower():
-            msg = "OpenAI organization/project configuration error. Set OPENAI_ORG_ID (or OPENAI_ORGANIZATION) and OPENAI_PROJECT_ID to match your API key."
+        lowered = msg.lower()
+        if "invalid_project" in lowered or "invalid project id" in lowered:
+            msg = (
+                "Invalid project ID. OPENAI_PROJECT_ID must be your project id (usually starts with 'proj_'), "
+                "not your API key (starts with 'sk-')."
+            )
+        elif "organization" in lowered:
+            msg = (
+                "OpenAI organization configuration error. Ensure OPENAI_ORGANIZATION/OPENAI_ORG_ID matches the "
+                "organization that owns your API key and project."
+            )
         return jsonify({"error": msg}), 500
 
 
