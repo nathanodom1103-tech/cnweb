@@ -119,7 +119,7 @@ CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI</title>
+    <title>N Tech AI 2.1</title>
     <style>
         :root {
             color-scheme: light;
@@ -131,14 +131,7 @@ CHAT_TEMPLATE = """
             --assistant: #f7f7f8;
             --muted: #667085;
         }
-        body {
-            font-family: Inter, system-ui, sans-serif;
-            max-width: 860px;
-            margin: 24px auto;
-            padding: 16px;
-            background: var(--bg);
-            color: #111827;
-        }
+        body { font-family: Inter, system-ui, sans-serif; max-width: 920px; margin: 24px auto; padding: 16px; background: var(--bg); color: #111827; }
         .card {
             background: var(--card);
             border: 1px solid var(--border);
@@ -153,12 +146,7 @@ CHAT_TEMPLATE = """
             gap: 8px;
             margin-bottom: 10px;
         }
-        .controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin: 12px 0;
-        }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
         input, textarea, select {
             width: 100%;
             padding: 10px 12px;
@@ -167,7 +155,7 @@ CHAT_TEMPLATE = """
             box-sizing: border-box;
             background: #fff;
         }
-        textarea { min-height: 110px; resize: vertical; }
+        textarea { min-height: 70px; resize: vertical; }
         button {
             padding: 12px 16px;
             background: var(--primary);
@@ -179,16 +167,7 @@ CHAT_TEMPLATE = """
             width: 100%;
         }
         .muted { color: var(--muted); font-size: 0.9rem; }
-        .chat {
-            background: #fff;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 14px;
-            margin-top: 12px;
-            min-height: 200px;
-            max-height: 440px;
-            overflow-y: auto;
-        }
+        .chat { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-top: 12px; min-height: 360px; max-height: 520px; overflow-y: auto; }
         .msg { padding: 10px 12px; border-radius: 10px; margin-bottom: 10px; white-space: pre-wrap; }
         .msg.user { background: var(--user); }
         .msg.assistant { background: var(--assistant); }
@@ -197,6 +176,8 @@ CHAT_TEMPLATE = """
         .toggle input { width: auto; }
         .nav a { color: var(--primary); text-decoration: none; font-weight: 600; display: none; }
         .nav a.secondary { display: inline; margin-right: 12px; }
+        .composer { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+        .prompt-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
     </style>
 </head>
 <body>
@@ -205,37 +186,39 @@ CHAT_TEMPLATE = """
             <div>
                 <h2 style="margin:0;">N Tech AI</h2>
                 <h1 style="margin:0;">2.1</h1>
-                <div class="muted">1.9 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, (model not reccomended)</div>
-
+                <div class="muted">1.9 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but not reccomended.</div>
+            </div>
             <div class="nav">
                 <a href="/image" class="secondary">Image Generator</a>
                 <a href="/dashboard" id="adminLink">Admin Dashboard →</a>
             </div>
         </div>
 
-        <div class="controls">
-            <input type="password" id="idCode" placeholder="Enter IDN" oninput="checkAdmin()">
-            <select id="modelSelect">
-                <option value="gpt-4o-mini">N Tech 1.7 Basic </option>
-                <option value="gpt-4o">N Tech 1.7 Smart</option>
-                <option value="gpt-5.4-nano">N Tech AI 1.8 Smart</option>
-                <option value="gpt-5.4-mini">N Tech AI 1.9 Smart</option>
-                <option value="gpt-5.4-nano">N Tech AI 2.0 Basic (New!)</option>
-            </select>
-        </div>
-
-        <div class="row">
-            <label class="toggle">
-                <input type="checkbox" id="memoryToggle" checked>
-                Remember previous outputs for context
-            </label>
-            <button style="width:auto;background:#475467;" onclick="clearHistory()">Clear chat</button>
-        </div>
-
-        <textarea id="userInput" placeholder="Ask anything..."></textarea>
-        <button onclick="askAI()">Send to AI</button>
-
         <div class="chat" id="chatHistory"></div>
+
+        <div class="composer">
+            <div class="controls">
+                <input type="password" id="idCode" placeholder="Enter IDN" oninput="checkAdmin()">
+                <select id="modelSelect">
+                    <option value="gpt-4o-mini">N Tech 1.7 Basic </option>
+                    <option value="gpt-4o">N Tech 1.7 Smart</option>
+                    <option value="gpt-5.4-nano">N Tech AI 1.8 Smart</option>
+                    <option value="gpt-5.4-mini">N Tech AI 1.9 Smart</option>
+                    <option value="gpt-5.4-nano">N Tech AI 2.0 Basic (New!)</option>
+                </select>
+            </div>
+            <div class="row">
+                <label class="toggle">
+                    <input type="checkbox" id="memoryToggle" checked>
+                    Remember previous outputs for context
+                </label>
+                <button style="width:auto;background:#475467;" onclick="clearHistory()">Clear chat</button>
+            </div>
+            <div class="prompt-row">
+                <textarea id="userInput" placeholder="Ask anything..."></textarea>
+                <button style="width:auto;" onclick="askAI()">Send to AI</button>
+            </div>
+        </div>
         <div class="row" style="margin-top:10px;">
             <div class="muted">Session Spent: $<span id="totalDisplay">0.000000</span></div>
             <div class="muted" id="status">Ready</div>
@@ -434,9 +417,9 @@ IMAGE_TEMPLATE = """
     <div class="card">
         <div class="row">
             <a href="/">&larr; Back to Chat</a>
-            <div class="muted">N Tech AI • Image 2.1 Smart</div>
+            <div class="muted">Model: N Tech AI Images • 2.1 Image Smart</div>
         </div>
-        <h2 style="margin-top:0;">N Tech Image Genreation</h2>
+        <h2 style="margin-top:0;">N Tech AI Image Generation</h2>
         <input id="idCode" type="password" placeholder="Enter IDN">
         <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
         <button onclick="generateImage()">Generate</button>
