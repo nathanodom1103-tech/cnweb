@@ -6,7 +6,20 @@ import psycopg2
 app = Flask(__name__)
 
 # --- CONFIGURATION ---
-client = OpenAI(api_key=os.environ.get("api_key"))
+def build_openai_client():
+    api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("api_key")
+    organization = os.environ.get("OPENAI_ORG_ID") or os.environ.get("OPENAI_ORGANIZATION")
+    project = os.environ.get("OPENAI_PROJECT_ID")
+
+    kwargs = {"api_key": api_key}
+    if organization:
+        kwargs["organization"] = organization
+    if project:
+        kwargs["project"] = project
+    return OpenAI(**kwargs)
+
+
+client = build_openai_client()
 
 # Prices are USD per 1K tokens
 MODEL_PRICING = {
@@ -24,8 +37,8 @@ ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
 
 USER_MAP = {
     "nathan": "Admin (Nathan)",
-    "1865": "Michael", "2001": "User 002", "003": "User 003",
-    "1793": "Quinn", "5111": "User 005", "6222": "User 006", "1011": "User 010",
+    "1865": "Michael", "002": "User 002", "003": "User 003",
+    "1793": "Quinn", "005": "User 005", "006": "User 006", "010": "User 010",
     "9823": "Market day 1", "4265": "Market day 2", "5892": "Market day 3",
     "1285": "Market day 4", "6723": "Market day 5", "7531": "Market day 6",
     "1596": "Market day 7", "4652": "Market day 8", "9187": "Market day 9",
@@ -189,8 +202,8 @@ CHAT_TEMPLATE = """
         <div class="topbar">
             <div>
                 <h2 style="margin:0;">N Tech AI</h2>
-                <h1 style="margin:0;">2.0</h1>
-                <div class="muted">1.9 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra</div>
+                <h1 style="margin:0;">2.1</h1>
+                <div class="muted">1.9 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, (model not reccomended)</div>
             </div>
             <div class="nav">
                 <a href="/image" class="secondary">Image Generator</a>
@@ -205,6 +218,7 @@ CHAT_TEMPLATE = """
                 <option value="gpt-4o">N Tech 1.7 Smart</option>
                 <option value="gpt-5.4-nano">N Tech AI 1.8 Smart</option>
                 <option value="gpt-5.4-mini">N Tech AI 1.9 Smart</option>
+                <option value="gpt-5.4-nano">N Tech AI 2.0 Basic (New!)</option>
             </select>
         </div>
 
@@ -401,7 +415,7 @@ IMAGE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Images Generator</title>
+    <title>N Tech AI Image Genreration</title>
     <style>
         body { font-family: Inter, system-ui, sans-serif; max-width: 860px; margin: 24px auto; padding: 16px; background: #f5f7fb; }
         .card { background: #fff; border: 1px solid #d9e1ee; border-radius: 16px; padding: 20px; }
@@ -418,9 +432,9 @@ IMAGE_TEMPLATE = """
     <div class="card">
         <div class="row">
             <a href="/">&larr; Back to Chat</a>
-            <div class="muted">Model: N Tech Images • Version: 2.0 </div>
+            <div class="muted">N Tech AI • Image 2.1 Smart</div>
         </div>
-        <h2 style="margin-top:0;">Generate Images (Experimental)</h2>
+        <h2 style="margin-top:0;">N Tech AI Image Generation</h2>
         <input id="idCode" type="password" placeholder="Enter IDN">
         <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
         <button onclick="generateImage()">Generate</button>
@@ -657,7 +671,10 @@ def generate_image():
             "cost": image_cost
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        msg = str(e)
+        if "organization" in msg.lower():
+            msg = "OpenAI organization/project configuration error. Set OPENAI_ORG_ID (or OPENAI_ORGANIZATION) and OPENAI_PROJECT_ID to match your API key."
+        return jsonify({"error": msg}), 500
 
 
 if __name__ == '__main__':
