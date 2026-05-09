@@ -434,9 +434,9 @@ IMAGE_TEMPLATE = """
     <div class="card">
         <div class="row">
             <a href="/">&larr; Back to Chat</a>
-            <div class="muted">Model: GPT Image 2 • Quality: low</div>
+            <div class="muted">N Tech AI • Image 2.1 Smart</div>
         </div>
-        <h2 style="margin-top:0;">Generate Image</h2>
+        <h2 style="margin-top:0;">N Tech Image Genreation</h2>
         <input id="idCode" type="password" placeholder="Enter IDN">
         <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
         <button onclick="generateImage()">Generate</button>
