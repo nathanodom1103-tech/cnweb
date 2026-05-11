@@ -178,15 +178,43 @@ CHAT_TEMPLATE = """
         .nav a.secondary { display: inline; margin-right: 12px; }
         .composer { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
         .prompt-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+        .intro {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: introFadeOut 1s ease 1.8s forwards;
+        }
+        .intro .logo {
+            font-size: min(36vw, 300px);
+            font-weight: 900;
+            color: white;
+            line-height: 1;
+            opacity: 0;
+            transform: scale(0.92);
+            animation: nReveal 1.1s ease forwards;
+        }
+        @keyframes nReveal {
+            from { opacity: 0; transform: scale(0.92); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes introFadeOut {
+            from { opacity: 1; visibility: visible; }
+            to { opacity: 0; visibility: hidden; }
+        }
     </style>
 </head>
 <body>
+    <div class="intro" id="introSplash"><div class="logo">N</div></div>
     <div class="card">
         <div class="topbar">
             <div>
-                <h2 style="margin:0;">N Tech AI</h2>
-                <h1 style="margin:0;">2.1</h1>
-                <div class="muted">1.9 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but not reccomended.</div>
+                <h2 style="margin:0;">N Tech AI 2.1</h2>
+                <h5 style="margin:0;">By using N Tech AI 2.1, you agree to the terms and conditions.</h5>
+                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but not reccomended.</div>
             </div>
             <div class="nav">
                 <a href="/image" class="secondary">Image Generator</a>
@@ -200,7 +228,7 @@ CHAT_TEMPLATE = """
             <div class="controls">
                 <input type="password" id="idCode" placeholder="Enter IDN" oninput="checkAdmin()">
                 <select id="modelSelect">
-                    <option value="gpt-4o-mini">N Tech 1.7 Basic </option>
+                    <option value="gpt-4o-mini">N Tech 1.7 Basic</option>
                     <option value="gpt-4o">N Tech 1.7 Smart</option>
                     <option value="gpt-5.4-nano">N Tech AI 1.8 Smart</option>
                     <option value="gpt-5.4-mini">N Tech AI 1.9 Smart</option>
@@ -318,6 +346,10 @@ CHAT_TEMPLATE = """
         }
 
         renderHistory();
+        setTimeout(() => {
+            const intro = document.getElementById('introSplash');
+            if (intro) intro.remove();
+        }, 3200);
     </script>
 </body>
 </html>
@@ -400,7 +432,7 @@ IMAGE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Image Generator</title>
+    <title>N Tech AI 2.1</title>
     <style>
         body { font-family: Inter, system-ui, sans-serif; max-width: 860px; margin: 24px auto; padding: 16px; background: #f5f7fb; }
         .card { background: #fff; border: 1px solid #d9e1ee; border-radius: 16px; padding: 20px; }
@@ -417,9 +449,9 @@ IMAGE_TEMPLATE = """
     <div class="card">
         <div class="row">
             <a href="/">&larr; Back to Chat</a>
-            <div class="muted">Model: N Tech AI Images • 2.1 Image Smart</div>
+            <div class="muted">Model: N Tech AI Images • Model: 2.1 Smart</div>
         </div>
-        <h2 style="margin-top:0;">N Tech AI Image Generation</h2>
+        <h2 style="margin-top:0;">N Tech AI Image Generation (Not functional until 2.2)</h2>
         <input id="idCode" type="password" placeholder="Enter IDN">
         <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
         <button onclick="generateImage()">Generate</button>
@@ -665,8 +697,8 @@ def generate_image():
             )
         elif "organization" in lowered:
             msg = (
-                "OpenAI organization configuration error. Ensure OPENAI_ORGANIZATION/OPENAI_ORG_ID matches the "
-                "organization that owns your API key and project."
+                "Image Generation is not working at the moment, go and try our new 2.0 Chat model!"
+                #OpenAI organization configuration error. Ensure OPENAI_ORGANIZATION/OPENAI_ORG_ID matches the organization that owns your API key and project.
             )
         return jsonify({"error": msg}), 500
 
