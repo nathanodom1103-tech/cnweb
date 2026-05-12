@@ -29,6 +29,7 @@ MODEL_PRICING = {
     "gpt-4o": {"input": 0.0025, "output": 0.01},
     "gpt-5.4-nano": {"input": 0.00005, "output": 0.0002},
     "gpt-5.4-mini": {"input": 0.0003, "output": 0.0012},
+    "gpt-5.1-codex-mini": {"input": 0.0003, "output": 0.0012},
 }
 IMAGE_PRICING = {
     "low": 0.02  # flat USD cost per generated image
@@ -39,7 +40,7 @@ raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
 
 USER_MAP = {
-    "nathan": "Admin (Nathan)",
+    "nathanodom": "Admin (Nathan)",
     "1865": "Michael", "002": "User 002", "003": "User 003",
     "1793": "Quinn", "005": "User 005", "006": "User 006", "010": "User 010",
     "9823": "Market day 1", "4265": "Market day 2", "5892": "Market day 3",
@@ -232,10 +233,11 @@ CHAT_TEMPLATE = """
         <div class="topbar">
             <div>
                 <h2 style="margin:0;">N Tech AI 2.2</h2>
-                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but not reccomended. 2.2 features: Images is a go! Upload them and create them!</div>
+                <div class="muted">2.1 new features: chat history, optional memory. Note: 2.1 Smart is the same as 1.8 Ultra, but not reccomended. images cost 20 credits per image (we are trying to make it lower).</div>
             </div>
             <div class="nav">
-                <a href="/image" class="secondary">Image Generator</a>
+                <a href="/image" class="secondary">N Tech Images</a>
+                <a href="/code" class="secondary">N-Code</a>
                 <a href="/dashboard" id="adminLink">Admin Dashboard →</a>
             </div>
         </div>
@@ -247,11 +249,11 @@ CHAT_TEMPLATE = """
                 <input type="password" id="idCode" placeholder="Enter IDN" oninput="checkAdmin()">
                 <select id="modelSelect">
                     <option value="gpt-4o-mini">N Tech 1.7 Basic </option>
-                    <option value="gpt-4o">N Tech AI 1.7 Smart</option>
+                    <option value="gpt-4o">N Tech 1.7 Smart (DO NOT USE. OUTDATED.)</option>
                     <option value="gpt-5.4-nano">N Tech AI 1.8 Smart</option>
                     <option value="gpt-5.4-mini">N Tech AI 1.9 Smart</option>
-                    <option value="gpt-5.4-nano">N Tech AI 2.0 Basic (New!)</option>
-                    <option value="gpt-5.4-nano">N Tech AI 2.0 Smart (Experimental)</option>
+                    <option value="gpt-5.4-nano">N Tech AI 2.0 Basic</option>
+                    <option value="gpt-5.4-nano">N Tech AI 2.1 Smart (Experimental)</option>
                 </select>
             </div>
             <div class="row">
@@ -464,7 +466,7 @@ IMAGE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Images</title>
+    <title>N Tech AI Images</title>
     <style>
         body { font-family: Inter, system-ui, sans-serif; max-width: 860px; margin: 24px auto; padding: 16px; background: #f5f7fb; }
         .card { background: #fff; border: 1px solid #d9e1ee; border-radius: 16px; padding: 20px; }
@@ -481,9 +483,9 @@ IMAGE_TEMPLATE = """
     <div class="card">
         <div class="row">
             <a href="/">&larr; Back to Chat</a>
-            <div class="muted">N Tech AI 2.1 Smart • EXPERIMENTAL</div>
+            <div class="muted">N Tech AI • 2.1 Image Smart </div>
         </div>
-        <h2 style="margin-top:0;">N Tech AI Image Generation</h2>
+        <h2 style="margin-top:0;">N Tech AI Images</h2>
         <input id="idCode" type="password" placeholder="Enter IDN">
         <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
         <button onclick="generateImage()">Generate</button>
@@ -533,6 +535,89 @@ IMAGE_TEMPLATE = """
 </html>
 """
 
+CODE_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>N-Code</title>
+    <style>
+        body { font-family: Inter, system-ui, sans-serif; max-width: 1100px; margin: 24px auto; padding: 16px; background: #f5f7fb; color:#111827; }
+        .card { background:#fff; border:1px solid #d9e1ee; border-radius:16px; padding:20px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06); }
+        .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+        .muted { color:#667085; }
+        .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+        input, textarea, select, button { width:100%; padding:11px 12px; border-radius:10px; border:1px solid #d9e1ee; box-sizing:border-box; }
+        textarea { min-height:140px; resize:vertical; }
+        button { border:none; background:#2563eb; color:white; font-weight:700; cursor:pointer; }
+        pre { background:#0b1020; color:#d7e3ff; border-radius:12px; padding:14px; overflow:auto; min-height:320px; margin-top:12px; }
+        .row { display:flex; gap:10px; align-items:center; }
+        .pill { background:#eef2ff; color:#1e3a8a; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:600; }
+        a { color:#2563eb; text-decoration:none; font-weight:600; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="top">
+            <a href="/">&larr; Back to Chat</a>
+            <div class="row">
+                <span class="pill">Model: 2.2-n-code-smart</span>
+                <span class="muted">N-Code</span>
+            </div>
+        </div>
+        <h2 style="margin:0 0 6px;">N-Code</h2>
+        <div class="muted" style="margin-bottom:12px;">Describe what you want to build, then get clean generated code with your IDN spending + credit limits enforced.</div>
+        <div class="grid">
+            <div>
+                <input id="idCode" type="password" placeholder="Enter IDN">
+            </div>
+            <div>
+                <input id="language" placeholder="Language / framework (e.g. Python, HTML, Java)">
+            </div>
+        </div>
+        <textarea id="prompt" placeholder="Describe the code to generate, requirements, and edge cases..."></textarea>
+        <button onclick="generateCode()">Generate Code</button>
+        <div class="row" style="margin-top:10px; justify-content:space-between;">
+            <div class="muted">Session Spent: $<span id="spent">0.000000</span></div>
+            <div class="muted">Credits: <span id="credits">0.00</span><span id="limit"></span></div>
+            <div class="muted" id="status">Ready</div>
+        </div>
+        <pre id="output">// Your generated code will appear here...</pre>
+    </div>
+    <script>
+        async function generateCode() {
+            const id_code = document.getElementById('idCode').value.trim();
+            const language = document.getElementById('language').value.trim();
+            const prompt = document.getElementById('prompt').value.trim();
+            const status = document.getElementById('status');
+            if (!id_code || !prompt) { alert('Please enter both IDN and prompt.'); return; }
+            status.innerText = 'Generating...';
+            try {
+                const response = await fetch('/generate_code', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({id_code, prompt, language})
+                });
+                const data = await response.json();
+                if (data.error) {
+                    status.innerText = 'Error';
+                    document.getElementById('output').innerText = `Error: ${data.error}`;
+                    return;
+                }
+                document.getElementById('output').innerText = data.code || '';
+                document.getElementById('spent').innerText = Number(data.spent || 0).toFixed(6);
+                document.getElementById('credits').innerText = Number(data.credits_used || 0).toFixed(2);
+                document.getElementById('limit').innerText = data.credit_limit !== null && data.credit_limit !== undefined ? ` / ${Number(data.credit_limit).toFixed(2)}` : '';
+                status.innerText = 'Done';
+            } catch (e) {
+                status.innerText = 'Connection failed';
+                document.getElementById('output').innerText = 'Connection failed.';
+            }
+        }
+    </script>
+</body>
+</html>
+"""
+
 
 @app.route('/')
 def index():
@@ -541,6 +626,10 @@ def index():
 @app.route('/image')
 def image_page():
     return render_template_string(IMAGE_TEMPLATE)
+
+@app.route('/code')
+def code_page():
+    return render_template_string(CODE_TEMPLATE)
 
 
 @app.route('/dashboard')
@@ -733,6 +822,58 @@ def generate_image():
                 "organization that owns your API key and project."
             )
         return jsonify({"error": msg}), 500
+
+
+@app.route('/generate_code', methods=['POST'])
+def generate_code():
+    data = request.json or {}
+    id_code = normalize_id_code(data.get('id_code', ''))
+    prompt = (data.get('prompt') or '').strip()
+    language = (data.get('language') or '').strip()
+    model_name = "gpt-5.1-codex-mini"
+
+    if not user_exists(id_code):
+        return jsonify({"error": "Unauthorized Access ID"}), 403
+    if not prompt:
+        return jsonify({"error": "Prompt is empty."}), 400
+
+    full_prompt = f"Language/Stack: {language or 'Not specified'}\\n\\nTask:\\n{prompt}\\n\\nReturn code first, then a short explanation."
+    try:
+        res = client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": full_prompt}]
+        )
+        code_answer = res.choices[0].message.content
+        pricing = MODEL_PRICING[model_name]
+        cost = ((res.usage.prompt_tokens / 1000) * pricing['input']) + ((res.usage.completion_tokens / 1000) * pricing['output'])
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT total_spent, credit_limit FROM users WHERE id_code = %s", (id_code,))
+        current = cursor.fetchone()
+        current_spent = current[0] if current else 0.0
+        credit_limit = current[1] if current else None
+        next_credits = (current_spent + cost) * 1000
+        if credit_limit is not None and next_credits > credit_limit:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Invalid credit amount"}), 400
+
+        cursor.execute("UPDATE users SET total_spent = total_spent + %s WHERE id_code = %s", (cost, id_code))
+        conn.commit()
+        cursor.execute("SELECT total_spent, credit_limit FROM users WHERE id_code = %s", (id_code,))
+        new_total = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return jsonify({
+            "code": code_answer,
+            "spent": new_total[0],
+            "cost": cost,
+            "credits_used": new_total[0] * 1000,
+            "credit_limit": new_total[1]
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':
