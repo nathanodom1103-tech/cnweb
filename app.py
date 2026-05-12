@@ -33,6 +33,7 @@ MODEL_PRICING = {
 IMAGE_PRICING = {
     "low": 0.02  # flat USD cost per generated image
 }
+IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
 
 raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
@@ -66,6 +67,24 @@ def parse_credit_limit(raw_value):
     except (TypeError, ValueError):
         return "invalid"
     return value if value >= 0 else "invalid"
+
+
+def user_exists(id_code):
+    normalized = normalize_id_code(id_code)
+    if not normalized:
+        return False
+    if not DATABASE_URL:
+        return normalized in get_allowed_ids()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM users WHERE id_code = %s LIMIT 1;", (normalized,))
+        found = cursor.fetchone() is not None
+        cursor.close()
+        conn.close()
+        return found
+    except Exception:
+        return normalized in get_allowed_ids()
 
 # --- DATABASE LOGIC ---
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -119,7 +138,7 @@ CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI 2.1</title>
+    <title>N Tech AI 2.2</title>
     <style>
         :root {
             color-scheme: light;
@@ -212,9 +231,8 @@ CHAT_TEMPLATE = """
     <div class="card">
         <div class="topbar">
             <div>
-                <h2 style="margin:0;">N Tech AI 2.1</h2>
-                <h5 style="margin:0;">By using N Tech AI 2.1, you agree to the terms and conditions.</h5>
-                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but not reccomended.</div>
+                <h2 style="margin:0;">N Tech AI 2.2</h2>
+                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but not reccomended. 2.2 features: Images is a go! Upload them and create them!</div>
             </div>
             <div class="nav">
                 <a href="/image" class="secondary">Image Generator</a>
@@ -228,11 +246,12 @@ CHAT_TEMPLATE = """
             <div class="controls">
                 <input type="password" id="idCode" placeholder="Enter IDN" oninput="checkAdmin()">
                 <select id="modelSelect">
-                    <option value="gpt-4o-mini">N Tech 1.7 Basic</option>
-                    <option value="gpt-4o">N Tech 1.7 Smart</option>
+                    <option value="gpt-4o-mini">N Tech 1.7 Basic </option>
+                    <option value="gpt-4o">N Tech AI 1.7 Smart</option>
                     <option value="gpt-5.4-nano">N Tech AI 1.8 Smart</option>
                     <option value="gpt-5.4-mini">N Tech AI 1.9 Smart</option>
                     <option value="gpt-5.4-nano">N Tech AI 2.0 Basic (New!)</option>
+                    <option value="gpt-5.4-nano">N Tech AI 2.0 Smart (Experimental)</option>
                 </select>
             </div>
             <div class="row">
@@ -242,6 +261,7 @@ CHAT_TEMPLATE = """
                 </label>
                 <button style="width:auto;background:#475467;" onclick="clearHistory()">Clear chat</button>
             </div>
+            <input id="fileInput" type="file" multiple style="margin-bottom:10px;" />
             <div class="prompt-row">
                 <textarea id="userInput" placeholder="Ask anything..."></textarea>
                 <button style="width:auto;" onclick="askAI()">Send to AI</button>
@@ -291,6 +311,7 @@ CHAT_TEMPLATE = """
             const prompt = document.getElementById('userInput').value.trim();
             const model = document.getElementById('modelSelect').value;
             const memory = document.getElementById('memoryToggle').checked;
+            const files = document.getElementById('fileInput').files;
             const status = document.getElementById('status');
 
             if (!id || !prompt) {
@@ -298,9 +319,20 @@ CHAT_TEMPLATE = """
                 return;
             }
 
-            messages.push({role: 'user', content: prompt});
+            let finalPrompt = prompt;
+            if (files && files.length) {
+                const fileChunks = [];
+                for (const f of files) {
+                    const text = await f.text();
+                    fileChunks.push(`\\n\\n[Attached file: ${f.name}]\\n${text.slice(0, 12000)}`);
+                }
+                finalPrompt += fileChunks.join('');
+            }
+
+            messages.push({role: 'user', content: finalPrompt});
             renderHistory();
             document.getElementById('userInput').value = '';
+            document.getElementById('fileInput').value = '';
             status.innerText = 'Processing...';
 
             try {
@@ -309,7 +341,7 @@ CHAT_TEMPLATE = """
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         id_code: id,
-                        prompt: prompt,
+                        prompt: finalPrompt,
                         model: model,
                         memory: memory,
                         history: memory ? messages.slice(0, -1) : []
@@ -432,7 +464,7 @@ IMAGE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI 2.1</title>
+    <title>Images</title>
     <style>
         body { font-family: Inter, system-ui, sans-serif; max-width: 860px; margin: 24px auto; padding: 16px; background: #f5f7fb; }
         .card { background: #fff; border: 1px solid #d9e1ee; border-radius: 16px; padding: 20px; }
@@ -449,9 +481,9 @@ IMAGE_TEMPLATE = """
     <div class="card">
         <div class="row">
             <a href="/">&larr; Back to Chat</a>
-            <div class="muted">Model: N Tech AI Images • Model: 2.1 Smart</div>
+            <div class="muted">N Tech AI 2.1 Smart • EXPERIMENTAL</div>
         </div>
-        <h2 style="margin-top:0;">N Tech AI Image Generation (Not functional until 2.2)</h2>
+        <h2 style="margin-top:0;">N Tech AI Image Generation</h2>
         <input id="idCode" type="password" placeholder="Enter IDN">
         <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
         <button onclick="generateImage()">Generate</button>
@@ -589,7 +621,7 @@ def ask():
     memory_enabled = bool(data.get('memory', True))
     history = data.get('history', []) if memory_enabled else []
 
-    if id_code not in get_allowed_ids():
+    if not user_exists(id_code):
         return jsonify({"error": "Unauthorized Access ID"}), 403
 
     if selected_model not in MODEL_PRICING:
@@ -649,7 +681,7 @@ def generate_image():
     id_code = normalize_id_code(data.get('id_code', ''))
     prompt = (data.get('prompt') or '').strip()
 
-    if id_code not in get_allowed_ids():
+    if not user_exists(id_code):
         return jsonify({"error": "Unauthorized Access ID"}), 403
     if not prompt:
         return jsonify({"error": "Prompt is empty."}), 400
@@ -669,7 +701,7 @@ def generate_image():
             return jsonify({"error": "Invalid credit amount"}), 400
 
         res = client.images.generate(
-            model="gpt-image-2",
+            model=IMAGE_MODEL,
             prompt=prompt,
             quality="low",
             size="1024x1024"
@@ -697,8 +729,8 @@ def generate_image():
             )
         elif "organization" in lowered:
             msg = (
-                "Image Generation is not working at the moment, go and try our new 2.0 Chat model!"
-                #OpenAI organization configuration error. Ensure OPENAI_ORGANIZATION/OPENAI_ORG_ID matches the organization that owns your API key and project.
+                "OpenAI organization configuration error. Ensure OPENAI_ORGANIZATION/OPENAI_ORG_ID matches the "
+                "organization that owns your API key and project."
             )
         return jsonify({"error": msg}), 500
 
