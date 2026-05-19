@@ -1,9 +1,11 @@
-from flask import Flask, render_template_string, request, jsonify, redirect, url_for
+
+from flask import Flask, render_template_string, request, jsonify, redirect, url_for, session
 from openai import OpenAI
 import os
 import psycopg2
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ntechai-dev-secret")
 
 # --- CONFIGURATION ---
 def build_openai_client():
@@ -26,9 +28,12 @@ client = build_openai_client()
 # Prices are USD per 1K tokens
 MODEL_PRICING = {
     "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
+    "gpt-4.1-mini": {"input": 0.0004, "output": 0.0016},
+    "gpt-4.1-nano": {"input": 0.0001, "output": 0.0004},
     "gpt-4o": {"input": 0.0025, "output": 0.01},
     "gpt-5.4-nano": {"input": 0.00005, "output": 0.0002},
     "gpt-5.4-mini": {"input": 0.0003, "output": 0.0012},
+    "gpt-5-mini": {"input": 0.00025, "output": 0.001},
     "gpt-5.1-codex-mini": {"input": 0.0003, "output": 0.0012},
 }
 IMAGE_PRICING = {
@@ -40,7 +45,7 @@ raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
 
 USER_MAP = {
-    "nathanodom": "Admin (Nathan)",
+    "nathan": "Admin (Nathan)",
     "1865": "Michael", "002": "User 002", "003": "User 003",
     "1793": "Quinn", "005": "User 005", "006": "User 006", "010": "User 010",
     "9823": "Market day 1", "4265": "Market day 2", "5892": "Market day 3",
@@ -139,7 +144,7 @@ CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI 2.2</title>
+    <title>N Tech AI 2.3</title>
     <style>
         :root {
             color-scheme: light;
@@ -232,12 +237,12 @@ CHAT_TEMPLATE = """
     <div class="card">
         <div class="topbar">
             <div>
-                <h2 style="margin:0;">N Tech AI 2.2</h2>
-                <div class="muted">2.1 new features: chat history, optional memory. Note: 2.1 Smart is the same as 1.8 Ultra, but not reccomended. images cost 20 credits per image (we are trying to make it lower).</div>
+                <h2 style="margin:0;">N Tech AI 2.3</h2>
+                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being re-made. >>IMAGES COST 20 CREDITS<<</div>
             </div>
             <div class="nav">
-                <a href="/image" class="secondary">N Tech Images</a>
-                <a href="/code" class="secondary">N-Code</a>
+                <a href="/image" class="secondary">Image Generator</a>
+                <a href="/code" class="secondary">Code Studio</a>
                 <a href="/dashboard" id="adminLink">Admin Dashboard →</a>
             </div>
         </div>
@@ -249,11 +254,14 @@ CHAT_TEMPLATE = """
                 <input type="password" id="idCode" placeholder="Enter IDN" oninput="checkAdmin()">
                 <select id="modelSelect">
                     <option value="gpt-4o-mini">N Tech 1.7 Basic </option>
-                    <option value="gpt-4o">N Tech 1.7 Smart (DO NOT USE. OUTDATED.)</option>
+                    <option value="gpt-4.1-nano">N Tech 1.7 Smart</option>
                     <option value="gpt-5.4-nano">N Tech AI 1.8 Smart</option>
-                    <option value="gpt-5.4-mini">N Tech AI 1.9 Smart</option>
-                    <option value="gpt-5.4-nano">N Tech AI 2.0 Basic</option>
-                    <option value="gpt-5.4-nano">N Tech AI 2.1 Smart (Experimental)</option>
+                    <option value="gpt-5.4-mini">N Tech AI 1.9 Smart (MODEL NOT USABLE UNTIL 2.4)</option>
+                    <option value="gpt-4.1-nano">N Tech AI 2.0 Basic</option>
+                    <option value="gpt-4.1-mini">N Tech AI 2.0 Smart</option>
+                    <option value="gpt-5.4-nano">N Tech AI 2.1 Basic</option>
+                    <option value="gpt-5.4-nano">N Tech AI 2.2 Basic (New!)</option>
+                    <option value="gpt-5-mini">N Tech AI 2.2 Ultra (New!)</option>
                 </select>
             </div>
             <div class="row">
@@ -309,7 +317,7 @@ CHAT_TEMPLATE = """
         }
 
         async function askAI() {
-            const id = document.getElementById('idCode').value.trim();
+            const id = document.getElementById('idCode').value.trim() || {{ idn|tojson }};
             const prompt = document.getElementById('userInput').value.trim();
             const model = document.getElementById('modelSelect').value;
             const memory = document.getElementById('memoryToggle').checked;
@@ -389,6 +397,24 @@ CHAT_TEMPLATE = """
 </html>
 """
 
+LOGIN_TEMPLATE = """
+<!DOCTYPE html>
+<html><head><title>Sign In - N Tech AI 2.3</title>
+<style>
+body{font-family:Inter,system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#f5f7fb;margin:0}
+.card{background:#fff;border:1px solid #d9e1ee;border-radius:16px;padding:28px;min-width:340px}
+input,button{width:100%;padding:11px 12px;border-radius:10px;border:1px solid #d9e1ee;box-sizing:border-box}
+button{margin-top:10px;background:#2563eb;color:#fff;border:none;font-weight:700}
+.err{color:#b42318;margin-top:10px}
+</style></head><body><div class="card">
+<h2 style="margin-top:0;">N Tech AI Sign In</h2>
+<form method="POST" action="/login">
+<input name="idn" type="password" placeholder="Enter IDN" required />
+<button type="submit">Continue</button>
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+</form></div></body></html>
+"""
+
 DASHBOARD_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -466,7 +492,7 @@ IMAGE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI Images</title>
+    <title>Image Generation</title>
     <style>
         body { font-family: Inter, system-ui, sans-serif; max-width: 860px; margin: 24px auto; padding: 16px; background: #f5f7fb; }
         .card { background: #fff; border: 1px solid #d9e1ee; border-radius: 16px; padding: 20px; }
@@ -483,9 +509,9 @@ IMAGE_TEMPLATE = """
     <div class="card">
         <div class="row">
             <a href="/">&larr; Back to Chat</a>
-            <div class="muted">N Tech AI • 2.1 Image Smart </div>
+            <div class="muted">Model: 2.2 Smart • N Tech AI/div>
         </div>
-        <h2 style="margin-top:0;">N Tech AI Images</h2>
+        <h2 style="margin-top:0;">Generate Image</h2>
         <input id="idCode" type="password" placeholder="Enter IDN">
         <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
         <button onclick="generateImage()">Generate</button>
@@ -539,7 +565,7 @@ CODE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N-Code</title>
+    <title>N Code</title>
     <style>
         body { font-family: Inter, system-ui, sans-serif; max-width: 1100px; margin: 24px auto; padding: 16px; background: #f5f7fb; color:#111827; }
         .card { background:#fff; border:1px solid #d9e1ee; border-radius:16px; padding:20px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06); }
@@ -560,18 +586,18 @@ CODE_TEMPLATE = """
         <div class="top">
             <a href="/">&larr; Back to Chat</a>
             <div class="row">
-                <span class="pill">Model: 2.2-n-code-smart</span>
-                <span class="muted">N-Code</span>
+                <span class="pill">Code 2.3 Smart</span>
+                <span class="muted">N Tech AI: N Code</span>
             </div>
         </div>
-        <h2 style="margin:0 0 6px;">N-Code</h2>
+        <h2 style="margin:0 0 6px;">N Tech AI Code Builder</h2>
         <div class="muted" style="margin-bottom:12px;">Describe what you want to build, then get clean generated code with your IDN spending + credit limits enforced.</div>
         <div class="grid">
             <div>
                 <input id="idCode" type="password" placeholder="Enter IDN">
             </div>
             <div>
-                <input id="language" placeholder="Language / framework (e.g. Python, HTML, Java)">
+                <input id="language" placeholder="Language / framework (e.g. Python Flask, React, Rust)">
             </div>
         </div>
         <textarea id="prompt" placeholder="Describe the code to generate, requirements, and edge cases..."></textarea>
@@ -621,7 +647,31 @@ CODE_TEMPLATE = """
 
 @app.route('/')
 def index():
-    return render_template_string(CHAT_TEMPLATE)
+    if not session.get("idn"):
+        return redirect(url_for('login_page'))
+    return render_template_string(CHAT_TEMPLATE, idn=session.get("idn"))
+
+
+@app.route('/login', methods=['GET'])
+def login_page():
+    if session.get("idn"):
+        return redirect(url_for('index'))
+    return render_template_string(LOGIN_TEMPLATE, error=None)
+
+
+@app.route('/login', methods=['POST'])
+def login_action():
+    idn = normalize_id_code(request.form.get('idn'))
+    if not user_exists(idn):
+        return render_template_string(LOGIN_TEMPLATE, error="Invalid IDN"), 403
+    session["idn"] = idn
+    return redirect(url_for('index'))
+
+
+@app.route('/logout')
+def logout():
+    session.pop("idn", None)
+    return redirect(url_for('login_page'))
 
 @app.route('/image')
 def image_page():
@@ -839,13 +889,15 @@ def generate_code():
 
     full_prompt = f"Language/Stack: {language or 'Not specified'}\\n\\nTask:\\n{prompt}\\n\\nReturn code first, then a short explanation."
     try:
-        res = client.chat.completions.create(
+        res = client.responses.create(
             model=model_name,
-            messages=[{"role": "user", "content": full_prompt}]
+            input=full_prompt
         )
-        code_answer = res.choices[0].message.content
+        code_answer = res.output_text
         pricing = MODEL_PRICING[model_name]
-        cost = ((res.usage.prompt_tokens / 1000) * pricing['input']) + ((res.usage.completion_tokens / 1000) * pricing['output'])
+        input_tokens = getattr(res.usage, "input_tokens", 0) or 0
+        output_tokens = getattr(res.usage, "output_tokens", 0) or 0
+        cost = ((input_tokens / 1000) * pricing['input']) + ((output_tokens / 1000) * pricing['output'])
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -878,3 +930,4 @@ def generate_code():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
