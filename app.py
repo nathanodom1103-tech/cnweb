@@ -162,7 +162,7 @@ CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI</title>
+    <title>N Tech AI 2.3</title>
     <style>
         """ + BASE_STYLE + """
         :root { --user: #e9f2ff; --assistant: #f8fafc; }
@@ -242,8 +242,8 @@ CHAT_TEMPLATE = """
     <div class="card glass">
         <div class="topbar">
             <div>
-                <h2 style="margin:0;">N Tech AI 2.1</h2>
-                <div class="muted">2.1 new features: chat history, optional memory. Note: 2.1 Smart is the same as 1.8 Ultra</div>
+                <h2 style="margin:0;">N Tech AI 2.3</h2>
+                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remoade. 2.2 ULTRA is out! Images cost around 20 credits (2 cents). N Code is fixed. You agree to the terms and conditions by using the AI</div>
             </div>
             <div class="nav"><button class="btn" style="width:auto;" onclick="toggleSettings()">Settings</button></div>
         </div>
@@ -623,8 +623,8 @@ CODE_TEMPLATE = """
         <div class="top">
             <a href="/">&larr; Back to Chat</a>
             <div class="row">
-                <span class="pill">Model: gpt-5.1-codex-mini</span>
-                <span class="muted">Code Studio</span>
+                <span class="pill">N Tech AI: N-Code</span>
+                <span class="muted">N Code</span>
             </div>
         </div>
         <h2 style="margin:0 0 6px;">N-Code</h2>
