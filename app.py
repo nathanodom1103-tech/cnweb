@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template_string, request, jsonify, redirect, url_for, session
 from openai import OpenAI
 import os
@@ -45,7 +44,7 @@ raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
 
 USER_MAP = {
-    "nathan": "Admin (Nathan)",
+    "nathanodom": "Admin (Nathan)",
     "1865": "Michael", "002": "User 002", "003": "User 003",
     "1793": "Quinn", "005": "User 005", "006": "User 006", "010": "User 010",
     "9823": "Market day 1", "4265": "Market day 2", "5892": "Market day 3",
@@ -139,31 +138,36 @@ def init_db():
 init_db()
 
 # --- HTML TEMPLATES ---
+BASE_STYLE = """
+        :root {
+            color-scheme: light;
+            --bg: #f3f6fb;
+            --card: #ffffff;
+            --border: #d8e1ef;
+            --primary: #2563eb;
+            --primary-2: #1d4ed8;
+            --muted: #667085;
+            --text: #0f172a;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: Inter, system-ui, sans-serif; margin: 0; background: radial-gradient(1200px 600px at 20% -10%, #dbeafe 0%, transparent 40%), var(--bg); color: var(--text); }
+        .glass { background: rgba(255,255,255,.9); backdrop-filter: blur(6px); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08); }
+        .btn { padding: 11px 14px; border: 0; border-radius: 10px; cursor: pointer; font-weight: 700; background: linear-gradient(180deg, var(--primary), var(--primary-2)); color: #fff; }
+        .btn.secondary { background: #475467; }
+        input, textarea, select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: #fff; color: var(--text); }
+        .muted { color: var(--muted); }
+"""
 
 CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI 2.3</title>
+    <title>N Tech AI</title>
     <style>
-        :root {
-            color-scheme: light;
-            --bg: #f5f7fb;
-            --card: #ffffff;
-            --border: #d9e1ee;
-            --primary: #2563eb;
-            --user: #e9f2ff;
-            --assistant: #f7f7f8;
-            --muted: #667085;
-        }
-        body { font-family: Inter, system-ui, sans-serif; max-width: 920px; margin: 24px auto; padding: 16px; background: var(--bg); color: #111827; }
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
-            padding: 20px;
-        }
+        """ + BASE_STYLE + """
+        :root { --user: #e9f2ff; --assistant: #f8fafc; }
+        body { font-family: Inter, system-ui, sans-serif; margin: 0; background: var(--bg); color: #111827; height: 100vh; overflow: hidden; }
+        .card { height: 100vh; display:flex; flex-direction:column; background: var(--card); padding: 18px; }
         .topbar {
             display: flex;
             justify-content: space-between;
@@ -192,17 +196,18 @@ CHAT_TEMPLATE = """
             width: 100%;
         }
         .muted { color: var(--muted); font-size: 0.9rem; }
-        .chat { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-top: 12px; min-height: 360px; max-height: 520px; overflow-y: auto; }
+        .chat { flex:1; background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-top: 12px; overflow-y: auto; }
         .msg { padding: 10px 12px; border-radius: 10px; margin-bottom: 10px; white-space: pre-wrap; }
         .msg.user { background: var(--user); }
         .msg.assistant { background: var(--assistant); }
         .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
         .toggle { display: flex; align-items: center; gap: 8px; }
         .toggle input { width: auto; }
-        .nav a { color: var(--primary); text-decoration: none; font-weight: 600; display: none; }
-        .nav a.secondary { display: inline; margin-right: 12px; }
+        .nav a { color: var(--primary); text-decoration: none; font-weight: 600; }
         .composer { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
         .prompt-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+        .panel { position: fixed; right: -360px; top: 0; width: 340px; height: 100vh; background:#fff; border-left:1px solid var(--border); padding:16px; transition:right .2s ease; z-index:10001; overflow:auto; box-shadow: -8px 0 24px rgba(2,6,23,.12); }
+        .panel.open { right: 0; }
         .intro {
             position: fixed;
             inset: 0;
@@ -234,47 +239,43 @@ CHAT_TEMPLATE = """
 </head>
 <body>
     <div class="intro" id="introSplash"><div class="logo">N</div></div>
-    <div class="card">
+    <div class="card glass">
         <div class="topbar">
             <div>
-                <h2 style="margin:0;">N Tech AI 2.3</h2>
-                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being re-made. >>IMAGES COST 20 CREDITS<<</div>
+                <h2 style="margin:0;">N Tech AI 2.1</h2>
+                <div class="muted">2.1 new features: chat history, optional memory. Note: 2.1 Smart is the same as 1.8 Ultra</div>
             </div>
-            <div class="nav">
-                <a href="/image" class="secondary">Image Generator</a>
-                <a href="/code" class="secondary">Code Studio</a>
-                <a href="/dashboard" id="adminLink">Admin Dashboard →</a>
-            </div>
+            <div class="nav"><button class="btn" style="width:auto;" onclick="toggleSettings()">Settings</button></div>
         </div>
 
         <div class="chat" id="chatHistory"></div>
 
         <div class="composer">
             <div class="controls">
-                <input type="password" id="idCode" placeholder="Enter IDN" oninput="checkAdmin()">
                 <select id="modelSelect">
-                    <option value="gpt-4o-mini">N Tech 1.7 Basic </option>
-                    <option value="gpt-4.1-nano">N Tech 1.7 Smart</option>
-                    <option value="gpt-5.4-nano">N Tech AI 1.8 Smart</option>
-                    <option value="gpt-5.4-mini">N Tech AI 1.9 Smart (MODEL NOT USABLE UNTIL 2.4)</option>
-                    <option value="gpt-4.1-nano">N Tech AI 2.0 Basic</option>
-                    <option value="gpt-4.1-mini">N Tech AI 2.0 Smart</option>
-                    <option value="gpt-5.4-nano">N Tech AI 2.1 Basic</option>
-                    <option value="gpt-5.4-nano">N Tech AI 2.2 Basic (New!)</option>
-                    <option value="gpt-5-mini">N Tech AI 2.2 Ultra (New!)</option>
-                </select>
+                <option value="gpt-4o-mini">N Tech 1.7 Basic</option>
+                <option value="gpt-4.1-nano">N Tech 1.7 Smart</option>
+                <option value="gpt-4.1-mini">N Tech 2.0 Basic (experimental)</option>
+                <option value="gpt-5.4-nano">N Tech AI 1.8 Smart</option>
+                <option value="gpt-5.4-mini">N Tech AI 1.9 Smart (Being remade)</option>
+                <option value="gpt-4.1-nano">N Tech AI 2.0 Basic</option>
+                <option value="gpt-5.4-nano">N Tech AI 2.1 Smart</option>
+                <option value="gpt-5.4-nano">N Tech AI 2.2 Basic</option>
+                <option value="gpt-5-mini">N Tech AI 2.2 Ultra (NEW AND BEST MODEL!)</option>
+                <option value="gpt-4.1-nano">N Tech AI 2.3 Basic (Super cheap)</option>
+            </select>
             </div>
             <div class="row">
                 <label class="toggle">
                     <input type="checkbox" id="memoryToggle" checked>
                     Remember previous outputs for context
                 </label>
-                <button style="width:auto;background:#475467;" onclick="clearHistory()">Clear chat</button>
+                <button class="btn secondary" style="width:auto;" onclick="clearHistory()">Clear chat</button>
             </div>
             <input id="fileInput" type="file" multiple style="margin-bottom:10px;" />
             <div class="prompt-row">
                 <textarea id="userInput" placeholder="Ask anything..."></textarea>
-                <button style="width:auto;" onclick="askAI()">Send to AI</button>
+                <button class="btn" style="width:auto;" onclick="askAI()">Send to AI</button>
             </div>
         </div>
         <div class="row" style="margin-top:10px;">
@@ -286,12 +287,41 @@ CHAT_TEMPLATE = """
             <div id="creditsBar" style="height:10px;width:0%;background:#2563eb;"></div>
         </div>
     </div>
+    <aside class="panel" id="settingsPanel">
+        <h3 style="margin-top:0;">Settings</h3>
+        <div class="muted">Signed in as: {{ idn }}</div>
+        <div style="margin-top:10px;">
+            <label>Model</label>
+            <select id="panelModel" onchange="document.getElementById('modelSelect').value=this.value;">
+                <option value="gpt-4o-mini">N Tech 1.7 Basic</option>
+                <option value="gpt-4.1-nano">N Tech 1.7 Smart</option>
+                <option value="gpt-4.1-mini">N Tech 2.0 Basic (experimental)</option>
+                <option value="gpt-5.4-nano">N Tech AI 1.8 Smart</option>
+                <option value="gpt-5.4-mini">N Tech AI 1.9 Smart (Being remade)</option>
+                <option value="gpt-4.1-nano">N Tech AI 2.0 Basic</option>
+                <option value="gpt-5.4-nano">N Tech AI 2.1 Smart</option>
+                <option value="gpt-5.4-nano">N Tech AI 2.2 Basic</option>
+                <option value="gpt-5-mini">N Tech AI 2.2 Ultra (NEW AND BEST MODEL!)</option>
+                <option value="gpt-4.1-nano">N Tech AI 2.3 Basic (Super cheap)</option>
+            </select>
+        </div>
+        <label class="toggle" style="margin-top:12px;">
+            <input type="checkbox" id="panelMemory" checked onchange="document.getElementById('memoryToggle').checked=this.checked;">
+            Remember previous outputs
+        </label>
+        <div style="margin-top:14px;display:grid;gap:8px;">
+            <a href="/image">Open Image Generator</a>
+            <a href="/code">Open N-Code</a>
+            <a href="/dashboard" id="adminLink">Open Admin Dashboard</a>
+            <a href="/logout">Sign out</a>
+        </div>
+    </aside>
 
     <script>
         let messages = [];
 
-        function checkAdmin() {
-            document.getElementById('adminLink').style.display = (document.getElementById('idCode').value.trim() === 'nathanthenathano') ? 'inline' : 'none';
+        function toggleSettings() {
+            document.getElementById('settingsPanel').classList.toggle('open');
         }
 
         function renderHistory() {
@@ -317,15 +347,15 @@ CHAT_TEMPLATE = """
         }
 
         async function askAI() {
-            const id = document.getElementById('idCode').value.trim() || {{ idn|tojson }};
+            const id = {{ idn|tojson }};
             const prompt = document.getElementById('userInput').value.trim();
             const model = document.getElementById('modelSelect').value;
             const memory = document.getElementById('memoryToggle').checked;
             const files = document.getElementById('fileInput').files;
             const status = document.getElementById('status');
 
-            if (!id || !prompt) {
-                alert('Please enter both IDN and message.');
+            if (!prompt) {
+                alert('Please enter a message.');
                 return;
             }
 
@@ -358,7 +388,7 @@ CHAT_TEMPLATE = """
                     })
                 });
 
-                const data = await response.json();
+            const data = await response.json();
                 if (data.error) {
                     messages.push({role: 'assistant', content: 'Error: ' + data.error});
                     status.innerText = 'Error';
@@ -388,6 +418,8 @@ CHAT_TEMPLATE = """
         }
 
         renderHistory();
+        document.getElementById('panelModel').value = document.getElementById('modelSelect').value;
+        document.getElementById('panelMemory').checked = document.getElementById('memoryToggle').checked;
         setTimeout(() => {
             const intro = document.getElementById('introSplash');
             if (intro) intro.remove();
@@ -399,7 +431,7 @@ CHAT_TEMPLATE = """
 
 LOGIN_TEMPLATE = """
 <!DOCTYPE html>
-<html><head><title>Sign In - N Tech AI 2.3</title>
+<html><head><title>Sign In - N Tech AI</title>
 <style>
 body{font-family:Inter,system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#f5f7fb;margin:0}
 .card{background:#fff;border:1px solid #d9e1ee;border-radius:16px;padding:28px;min-width:340px}
@@ -492,13 +524,13 @@ IMAGE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Image Generation</title>
+    <title>Image Generator</title>
     <style>
-        body { font-family: Inter, system-ui, sans-serif; max-width: 860px; margin: 24px auto; padding: 16px; background: #f5f7fb; }
-        .card { background: #fff; border: 1px solid #d9e1ee; border-radius: 16px; padding: 20px; }
-        textarea, input, button { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d9e1ee; box-sizing: border-box; }
+        """ + BASE_STYLE + """
+        body { max-width: 940px; margin: 24px auto; padding: 16px; }
+        .card { padding: 20px; }
         textarea { min-height: 120px; resize: vertical; margin-bottom: 10px; }
-        button { background: #2563eb; color: white; border: none; font-weight: 600; cursor: pointer; }
+        button { font-weight: 700; }
         .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         .muted { color: #667085; font-size: 0.9rem; }
         img { max-width: 100%; border-radius: 12px; margin-top: 12px; border: 1px solid #d9e1ee; }
@@ -506,15 +538,15 @@ IMAGE_TEMPLATE = """
     </style>
 </head>
 <body>
-    <div class="card">
+    <div class="card glass">
         <div class="row">
             <a href="/">&larr; Back to Chat</a>
-            <div class="muted">Model: 2.2 Smart • N Tech AI/div>
+            <div class="muted">Model: GPT Image • Quality: low</div>
         </div>
         <h2 style="margin-top:0;">Generate Image</h2>
-        <input id="idCode" type="password" placeholder="Enter IDN">
+        <div class="muted">Signed in as: {{ idn }}</div>
         <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
-        <button onclick="generateImage()">Generate</button>
+        <button class="btn" onclick="generateImage()">Generate</button>
         <div id="status" class="muted" style="margin-top:10px;">Ready</div>
         <div class="muted" style="margin-top:6px;">Session Spent: $<span id="imageSpent">0.000000</span></div>
         <div class="muted">Credits Used: <span id="imageCredits">0.00</span><span id="imageCreditLimit"></span></div>
@@ -523,12 +555,12 @@ IMAGE_TEMPLATE = """
 
     <script>
         async function generateImage() {
-            const idCode = document.getElementById('idCode').value.trim();
+            const idCode = {{ idn|tojson }};
             const prompt = document.getElementById('prompt').value.trim();
             const status = document.getElementById('status');
             const result = document.getElementById('result');
-            if (!idCode || !prompt) {
-                alert('Please enter both IDN and prompt.');
+            if (!prompt) {
+                alert('Please enter a prompt.');
                 return;
             }
             status.innerText = 'Generating...';
@@ -565,57 +597,102 @@ CODE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Code</title>
+    <title>Codex Code Studio</title>
     <style>
-        body { font-family: Inter, system-ui, sans-serif; max-width: 1100px; margin: 24px auto; padding: 16px; background: #f5f7fb; color:#111827; }
-        .card { background:#fff; border:1px solid #d9e1ee; border-radius:16px; padding:20px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06); }
+        """ + BASE_STYLE + """
+        body { max-width: 1200px; margin: 24px auto; padding: 16px; color:#111827; }
+        .card { padding:20px; }
         .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
         .muted { color:#667085; }
         .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
         input, textarea, select, button { width:100%; padding:11px 12px; border-radius:10px; border:1px solid #d9e1ee; box-sizing:border-box; }
         textarea { min-height:140px; resize:vertical; }
-        button { border:none; background:#2563eb; color:white; font-weight:700; cursor:pointer; }
-        pre { background:#0b1020; color:#d7e3ff; border-radius:12px; padding:14px; overflow:auto; min-height:320px; margin-top:12px; }
+        .btn { border:none; }
+        pre { background:#0b1020; color:#d7e3ff; border-radius:12px; padding:14px; overflow:auto; min-height:120px; margin-top:12px; }
+        .blocks { margin-top: 12px; display: grid; gap: 12px; }
+        .code-card { border: 1px solid #1f2a44; border-radius: 12px; overflow: hidden; background: #0b1020; }
+        .code-head { padding: 8px 12px; font-size: 12px; color: #cbd5e1; background: #111a2f; border-bottom: 1px solid #1f2a44; display:flex; justify-content:space-between; align-items:center; }
+        .copy { border:0; background:#1d4ed8; color:#fff; border-radius:8px; padding:5px 9px; cursor:pointer; font-size:12px; }
         .row { display:flex; gap:10px; align-items:center; }
         .pill { background:#eef2ff; color:#1e3a8a; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:600; }
         a { color:#2563eb; text-decoration:none; font-weight:600; }
     </style>
 </head>
 <body>
-    <div class="card">
+    <div class="card glass">
         <div class="top">
             <a href="/">&larr; Back to Chat</a>
             <div class="row">
-                <span class="pill">Code 2.3 Smart</span>
-                <span class="muted">N Tech AI: N Code</span>
+                <span class="pill">Model: gpt-5.1-codex-mini</span>
+                <span class="muted">Code Studio</span>
             </div>
         </div>
-        <h2 style="margin:0 0 6px;">N Tech AI Code Builder</h2>
+        <h2 style="margin:0 0 6px;">N-Code</h2>
         <div class="muted" style="margin-bottom:12px;">Describe what you want to build, then get clean generated code with your IDN spending + credit limits enforced.</div>
         <div class="grid">
-            <div>
-                <input id="idCode" type="password" placeholder="Enter IDN">
-            </div>
+            <div class="muted">Signed in as: {{ idn }}</div>
             <div>
                 <input id="language" placeholder="Language / framework (e.g. Python Flask, React, Rust)">
             </div>
         </div>
         <textarea id="prompt" placeholder="Describe the code to generate, requirements, and edge cases..."></textarea>
-        <button onclick="generateCode()">Generate Code</button>
+        <button class="btn" onclick="generateCode()">Generate Code</button>
         <div class="row" style="margin-top:10px; justify-content:space-between;">
             <div class="muted">Session Spent: $<span id="spent">0.000000</span></div>
             <div class="muted">Credits: <span id="credits">0.00</span><span id="limit"></span></div>
             <div class="muted" id="status">Ready</div>
         </div>
-        <pre id="output">// Your generated code will appear here...</pre>
+        <pre id="output">// Full response appears here...</pre>
+        <div id="blocks" class="blocks"></div>
     </div>
     <script>
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.innerText = text || '';
+            return div.innerHTML;
+        }
+
+        function parseCodeBlocks(text) {
+            const blocks = [];
+            const regex = /```([a-zA-Z0-9_+-]*)\\n([\\s\\S]*?)```/g;
+            let m;
+            while ((m = regex.exec(text)) !== null) {
+                blocks.push({lang: m[1] || 'code', code: m[2] || ''});
+            }
+            return blocks;
+        }
+
+        function renderCodeBlocks(text) {
+            const blocksWrap = document.getElementById('blocks');
+            const blocks = parseCodeBlocks(text);
+            if (!blocks.length) {
+                blocksWrap.innerHTML = '<div class="muted">No fenced code blocks found; showing full output above.</div>';
+                return;
+            }
+            blocksWrap.innerHTML = blocks.map((b, i) => `
+                <div class="code-card">
+                    <div class="code-head">
+                        <span>${escapeHtml(b.lang)} block #${i + 1}</span>
+                        <button class="copy" onclick="copyBlock(${i})">Copy</button>
+                    </div>
+                    <pre id="block-${i}">${escapeHtml(b.code)}</pre>
+                </div>
+            `).join('');
+            window.__codeBlocks = blocks;
+        }
+
+        function copyBlock(idx) {
+            const block = (window.__codeBlocks || [])[idx];
+            if (!block) return;
+            navigator.clipboard.writeText(block.code);
+        }
+
         async function generateCode() {
-            const id_code = document.getElementById('idCode').value.trim();
+            const id_code = {{ idn|tojson }};
             const language = document.getElementById('language').value.trim();
             const prompt = document.getElementById('prompt').value.trim();
             const status = document.getElementById('status');
-            if (!id_code || !prompt) { alert('Please enter both IDN and prompt.'); return; }
+            if (!prompt) { alert('Please enter a prompt.'); return; }
             status.innerText = 'Generating...';
             try {
                 const response = await fetch('/generate_code', {
@@ -629,7 +706,9 @@ CODE_TEMPLATE = """
                     document.getElementById('output').innerText = `Error: ${data.error}`;
                     return;
                 }
-                document.getElementById('output').innerText = data.code || '';
+                const output = data.code || '';
+                document.getElementById('output').innerText = output;
+                renderCodeBlocks(output);
                 document.getElementById('spent').innerText = Number(data.spent || 0).toFixed(6);
                 document.getElementById('credits').innerText = Number(data.credits_used || 0).toFixed(2);
                 document.getElementById('limit').innerText = data.credit_limit !== null && data.credit_limit !== undefined ? ` / ${Number(data.credit_limit).toFixed(2)}` : '';
@@ -675,11 +754,15 @@ def logout():
 
 @app.route('/image')
 def image_page():
-    return render_template_string(IMAGE_TEMPLATE)
+    if not session.get("idn"):
+        return redirect(url_for('login_page'))
+    return render_template_string(IMAGE_TEMPLATE, idn=session.get("idn"))
 
 @app.route('/code')
 def code_page():
-    return render_template_string(CODE_TEMPLATE)
+    if not session.get("idn"):
+        return redirect(url_for('login_page'))
+    return render_template_string(CODE_TEMPLATE, idn=session.get("idn"))
 
 
 @app.route('/dashboard')
@@ -930,4 +1013,3 @@ def generate_code():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
