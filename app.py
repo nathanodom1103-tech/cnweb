@@ -39,12 +39,13 @@ IMAGE_PRICING = {
     "low": 0.02  # flat USD cost per generated image
 }
 IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
+ADMIN_IDN = os.environ.get("ADMIN_IDN", "nathanodom")
 
 raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
 
 USER_MAP = {
-    "nathanodom": "Admin (Nathan)",
+    "nathan": "Admin (Nathan)",
     "1865": "Michael", "002": "User 002", "003": "User 003",
     "1793": "Quinn", "005": "User 005", "006": "User 006", "010": "User 010",
     "9823": "Market day 1", "4265": "Market day 2", "5892": "Market day 3",
@@ -90,6 +91,10 @@ def user_exists(id_code):
         return found
     except Exception:
         return normalized in get_allowed_ids()
+
+
+def is_admin_session():
+    return normalize_id_code(session.get("idn")) == ADMIN_IDN
 
 # --- DATABASE LOGIC ---
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -175,7 +180,7 @@ CHAT_TEMPLATE = """
             gap: 8px;
             margin-bottom: 10px;
         }
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+        .controls { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 12px 0; }
         input, textarea, select {
             width: 100%;
             padding: 10px 12px;
@@ -243,7 +248,7 @@ CHAT_TEMPLATE = """
         <div class="topbar">
             <div>
                 <h2 style="margin:0;">N Tech AI 2.3</h2>
-                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remoade. 2.2 ULTRA is out! Images cost around 20 credits (2 cents). N Code is fixed. You agree to the terms and conditions by using the AI</div>
+                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. IMAGE GENERATION COST 20 CREDITS. N Code is fixed. Open settings for models. 2.2 ULTRA IS OUT! THE FIRST ULTRA MODEL SINCE 1.5!</div>
             </div>
             <div class="nav"><button class="btn" style="width:auto;" onclick="toggleSettings()">Settings</button></div>
         </div>
@@ -251,20 +256,7 @@ CHAT_TEMPLATE = """
         <div class="chat" id="chatHistory"></div>
 
         <div class="composer">
-            <div class="controls">
-                <select id="modelSelect">
-                <option value="gpt-4o-mini">N Tech 1.7 Basic</option>
-                <option value="gpt-4.1-nano">N Tech 1.7 Smart</option>
-                <option value="gpt-4.1-mini">N Tech 2.0 Basic (experimental)</option>
-                <option value="gpt-5.4-nano">N Tech AI 1.8 Smart</option>
-                <option value="gpt-5.4-mini">N Tech AI 1.9 Smart (Being remade)</option>
-                <option value="gpt-4.1-nano">N Tech AI 2.0 Basic</option>
-                <option value="gpt-5.4-nano">N Tech AI 2.1 Smart</option>
-                <option value="gpt-5.4-nano">N Tech AI 2.2 Basic</option>
-                <option value="gpt-5-mini">N Tech AI 2.2 Ultra (NEW AND BEST MODEL!)</option>
-                <option value="gpt-4.1-nano">N Tech AI 2.3 Basic (Super cheap)</option>
-            </select>
-            </div>
+            <div class="controls"></div>
             <div class="row">
                 <label class="toggle">
                     <input type="checkbox" id="memoryToggle" checked>
@@ -292,7 +284,7 @@ CHAT_TEMPLATE = """
         <div class="muted">Signed in as: {{ idn }}</div>
         <div style="margin-top:10px;">
             <label>Model</label>
-            <select id="panelModel" onchange="document.getElementById('modelSelect').value=this.value;">
+            <select id="panelModel">
                 <option value="gpt-4o-mini">N Tech 1.7 Basic</option>
                 <option value="gpt-4.1-nano">N Tech 1.7 Smart</option>
                 <option value="gpt-4.1-mini">N Tech 2.0 Basic (experimental)</option>
@@ -312,7 +304,7 @@ CHAT_TEMPLATE = """
         <div style="margin-top:14px;display:grid;gap:8px;">
             <a href="/image">Open Image Generator</a>
             <a href="/code">Open N-Code</a>
-            <a href="/dashboard" id="adminLink">Open Admin Dashboard</a>
+            {% if is_admin %}<a href="/dashboard" id="adminLink">Open Admin Dashboard</a>{% endif %}
             <a href="/logout">Sign out</a>
         </div>
     </aside>
@@ -349,7 +341,7 @@ CHAT_TEMPLATE = """
         async function askAI() {
             const id = {{ idn|tojson }};
             const prompt = document.getElementById('userInput').value.trim();
-            const model = document.getElementById('modelSelect').value;
+            const model = document.getElementById('panelModel').value;
             const memory = document.getElementById('memoryToggle').checked;
             const files = document.getElementById('fileInput').files;
             const status = document.getElementById('status');
@@ -418,7 +410,7 @@ CHAT_TEMPLATE = """
         }
 
         renderHistory();
-        document.getElementById('panelModel').value = document.getElementById('modelSelect').value;
+        document.getElementById('panelModel').value = 'gpt-4o-mini';
         document.getElementById('panelMemory').checked = document.getElementById('memoryToggle').checked;
         setTimeout(() => {
             const intro = document.getElementById('introSplash');
@@ -623,8 +615,8 @@ CODE_TEMPLATE = """
         <div class="top">
             <a href="/">&larr; Back to Chat</a>
             <div class="row">
-                <span class="pill">N Tech AI: N-Code</span>
-                <span class="muted">N Code</span>
+                <span class="pill">Model: n-tech-ai-2.2-s</span>
+                <span class="muted">Code Studio</span>
             </div>
         </div>
         <h2 style="margin:0 0 6px;">N-Code</h2>
@@ -726,15 +718,14 @@ CODE_TEMPLATE = """
 
 @app.route('/')
 def index():
-    if not session.get("idn"):
+    if not session.get("idn") or not user_exists(session.get("idn")):
+        session.pop("idn", None)
         return redirect(url_for('login_page'))
-    return render_template_string(CHAT_TEMPLATE, idn=session.get("idn"))
+    return render_template_string(CHAT_TEMPLATE, idn=session.get("idn"), is_admin=is_admin_session())
 
 
 @app.route('/login', methods=['GET'])
 def login_page():
-    if session.get("idn"):
-        return redirect(url_for('index'))
     return render_template_string(LOGIN_TEMPLATE, error=None)
 
 
@@ -754,19 +745,23 @@ def logout():
 
 @app.route('/image')
 def image_page():
-    if not session.get("idn"):
+    if not session.get("idn") or not user_exists(session.get("idn")):
+        session.pop("idn", None)
         return redirect(url_for('login_page'))
     return render_template_string(IMAGE_TEMPLATE, idn=session.get("idn"))
 
 @app.route('/code')
 def code_page():
-    if not session.get("idn"):
+    if not session.get("idn") or not user_exists(session.get("idn")):
+        session.pop("idn", None)
         return redirect(url_for('login_page'))
     return render_template_string(CODE_TEMPLATE, idn=session.get("idn"))
 
 
 @app.route('/dashboard')
 def dashboard():
+    if not is_admin_session():
+        return redirect(url_for('index'))
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -781,6 +776,8 @@ def dashboard():
 
 @app.route('/add_account', methods=['POST'])
 def add_account():
+    if not is_admin_session():
+        return redirect(url_for('index'))
     id_code = normalize_id_code(request.form.get('id_code'))
     display_name = (request.form.get('display_name') or '').strip() or id_code
     credit_limit = parse_credit_limit(request.form.get('credit_limit'))
@@ -815,11 +812,15 @@ def add_account():
 
 @app.route('/data')
 def edit_data():
+    if not is_admin_session():
+        return redirect(url_for('index'))
     return render_template_string(DATA_EDIT_TEMPLATE, allowed_ids=get_allowed_ids(), user_map=USER_MAP)
 
 
 @app.route('/update_data', methods=['POST'])
 def update_data():
+    if not is_admin_session():
+        return redirect(url_for('index'))
     id_code = request.form.get('id_code')
     new_amount = request.form.get('new_amount')
     try:
