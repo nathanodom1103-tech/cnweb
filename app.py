@@ -45,7 +45,7 @@ raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
 
 USER_MAP = {
-    "nathan": "Admin (Nathan)",
+    "nathanodom": "Admin (Nathan)",
     "1865": "Michael", "002": "User 002", "003": "User 003",
     "1793": "Quinn", "005": "User 005", "006": "User 006", "010": "User 010",
     "9823": "Market day 1", "4265": "Market day 2", "5892": "Market day 3",
@@ -213,6 +213,7 @@ CHAT_TEMPLATE = """
         .prompt-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
         .panel { position: fixed; right: -360px; top: 0; width: 340px; height: 100vh; background:#fff; border-left:1px solid var(--border); padding:16px; transition:right .2s ease; z-index:10001; overflow:auto; box-shadow: -8px 0 24px rgba(2,6,23,.12); }
         .panel.open { right: 0; }
+        .panel-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
         .intro {
             position: fixed;
             inset: 0;
@@ -248,7 +249,7 @@ CHAT_TEMPLATE = """
         <div class="topbar">
             <div>
                 <h2 style="margin:0;">N Tech AI 2.3</h2>
-                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. IMAGE GENERATION COST 20 CREDITS. N Code is fixed. Open settings for models. 2.2 ULTRA IS OUT! THE FIRST ULTRA MODEL SINCE 1.5!</div>
+                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. N Tech AI Art competition submissions is almost closed! Images cost 20 credits (almost 2 cents) per image, which we are trying to fix. N Code is fixed! 2.2 Ultra is out, and it is probably our best model yet! try it by clicking the settings to change models. N TECH AI FOUND ILLEGAL BEHAVIOUR AT 11:39 AM 5/19/26. If you know something, please tell the N Tech Staff.</div>
             </div>
             <div class="nav"><button class="btn" style="width:auto;" onclick="toggleSettings()">Settings</button></div>
         </div>
@@ -280,8 +281,12 @@ CHAT_TEMPLATE = """
         </div>
     </div>
     <aside class="panel" id="settingsPanel">
-        <h3 style="margin-top:0;">Settings</h3>
+        <div class="panel-head">
+            <h3 style="margin:0;">Settings</h3>
+            <button class="btn secondary" style="width:auto;padding:6px 10px;" onclick="toggleSettings()">Close</button>
+        </div>
         <div class="muted">Signed in as: {{ idn }}</div>
+        <div class="muted">Model info will be here soon! Note: 1.7-2.0 basic DO NOT use emojis. 2.2 ultra is new, but cheap, and REALLY GOOD.</div>
         <div style="margin-top:10px;">
             <label>Model</label>
             <select id="panelModel">
@@ -533,7 +538,7 @@ IMAGE_TEMPLATE = """
     <div class="card glass">
         <div class="row">
             <a href="/">&larr; Back to Chat</a>
-            <div class="muted">Model: GPT Image • Quality: low</div>
+            <div class="muted">N Tech AI Images 2.3</div>
         </div>
         <h2 style="margin-top:0;">Generate Image</h2>
         <div class="muted">Signed in as: {{ idn }}</div>
@@ -589,7 +594,7 @@ CODE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Codex Code Studio</title>
+    <title>N Code</title>
     <style>
         """ + BASE_STYLE + """
         body { max-width: 1200px; margin: 24px auto; padding: 16px; color:#111827; }
@@ -615,7 +620,7 @@ CODE_TEMPLATE = """
         <div class="top">
             <a href="/">&larr; Back to Chat</a>
             <div class="row">
-                <span class="pill">Model: n-tech-ai-2.2-s</span>
+                <span class="pill">N TECH AI 2.1 N Code</span>
                 <span class="muted">Code Studio</span>
             </div>
         </div>
