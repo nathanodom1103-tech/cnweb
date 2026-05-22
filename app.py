@@ -36,7 +36,8 @@ MODEL_PRICING = {
     "gpt-5.1-codex-mini": {"input": 0.0003, "output": 0.0012},
 }
 IMAGE_PRICING = {
-    "low": 0.02  # flat USD cost per generated image
+    "low": 0.009,   # GPT Image 1.5 low quality 1024x1024 (approx)
+    "high": 0.035   # higher quality estimate
 }
 IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
 ADMIN_IDN = os.environ.get("ADMIN_IDN", "nathanodom")
@@ -45,7 +46,7 @@ raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
 
 USER_MAP = {
-    "nathanodom": "Admin (Nathan)",
+    "nathanodom11032013151507072014198319816789": "Admin (Nathan)",
     "1865": "Michael", "002": "User 002", "003": "User 003",
     "1793": "Quinn", "005": "User 005", "006": "User 006", "010": "User 010",
     "9823": "Market day 1", "4265": "Market day 2", "5892": "Market day 3",
@@ -167,7 +168,7 @@ CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI 2.3</title>
+    <title>N Tech AI</title>
     <style>
         """ + BASE_STYLE + """
         :root { --user: #e9f2ff; --assistant: #f8fafc; }
@@ -249,7 +250,7 @@ CHAT_TEMPLATE = """
         <div class="topbar">
             <div>
                 <h2 style="margin:0;">N Tech AI 2.3</h2>
-                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. N Tech AI Art competition submissions is almost closed! Images cost 20 credits (almost 2 cents) per image, which we are trying to fix. N Code is fixed! 2.2 Ultra is out, and it is probably our best model yet! try it by clicking the settings to change models. N TECH AI FOUND ILLEGAL BEHAVIOUR AT 11:39 AM 5/19/26. If you know something, please tell the N Tech Staff.</div>
+                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. N Tech AI Art competition submissions is almost closed! Images used to cost 20 credits (almost 2 cents!) per image (On basic), which we fixed, now only costing 9 credits (On basic) and 35 (on smart). N Code is fixed! 2.2 Ultra is out, and it is probably our best model yet! try it by clicking the settings to change models. N TECH AI FOUND ILLEGAL BEHAVIOUR AT 11:39 AM 5/19/26 and 5/21/26 around noon. If you know something, please tell the N Tech Staff. N Tech AI 2026</div>
             </div>
             <div class="nav"><button class="btn" style="width:auto;" onclick="toggleSettings()">Settings</button></div>
         </div>
@@ -286,7 +287,6 @@ CHAT_TEMPLATE = """
             <button class="btn secondary" style="width:auto;padding:6px 10px;" onclick="toggleSettings()">Close</button>
         </div>
         <div class="muted">Signed in as: {{ idn }}</div>
-        <div class="muted">Model info will be here soon! Note: 1.7-2.0 basic DO NOT use emojis. 2.2 ultra is new, but cheap, and REALLY GOOD.</div>
         <div style="margin-top:10px;">
             <label>Model</label>
             <select id="panelModel">
@@ -472,7 +472,7 @@ DASHBOARD_TEMPLATE = """
         <button type="submit" class="edit-btn" style="border:none;cursor:pointer;">Add Account</button>
     </form>
     <table>
-        <tr><th>Assigned Name</th><th>ID Code</th><th>Total Spent ($)</th><th>Credits Used</th><th>Credit Limit</th></tr>
+        <tr><th>Assigned Name</th><th>ID Code</th><th>Total Spent ($)</th><th>Credits Used</th><th>Credit Limit</th><th>Actions</th></tr>
         {% for row in data %}
         <tr>
             <td>{{ row[2] or user_map.get(row[0], row[0]) }}</td>
@@ -480,6 +480,12 @@ DASHBOARD_TEMPLATE = """
             <td>${{ "%.6f"|format(row[1]) }}</td>
             <td>{{ "%.2f"|format(row[1] * 1000) }}</td>
             <td>{{ "%.2f"|format(row[3]) if row[3] is not none else "—" }}</td>
+            <td>
+                <form action="/delete_account" method="POST" onsubmit="return confirm('Delete this account?');">
+                    <input type="hidden" name="id_code" value="{{ row[0] }}">
+                    <button type="submit" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer;">Delete</button>
+                </form>
+            </td>
         </tr>
         {% endfor %}
     </table>
@@ -521,7 +527,7 @@ IMAGE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Image Generator</title>
+    <title>Image Generation</title>
     <style>
         """ + BASE_STYLE + """
         body { max-width: 940px; margin: 24px auto; padding: 16px; }
@@ -538,10 +544,15 @@ IMAGE_TEMPLATE = """
     <div class="card glass">
         <div class="row">
             <a href="/">&larr; Back to Chat</a>
-            <div class="muted">N Tech AI Images 2.3</div>
+            <div class="muted">N Tech Image Generation • 1024x1024</div>
         </div>
-        <h2 style="margin-top:0;">Generate Image</h2>
+        <h2 style="margin-top:0;">N Tech AI Images</h2>
         <div class="muted">Signed in as: {{ idn }}</div>
+        <label>Quality</label>
+        <select id="quality" onchange="handleQualityChange()">
+            <option value="low">Basic (~$0.009/image)</option>
+            <option value="high">Smart (~$0.035/image)</option>
+        </select>
         <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
         <button class="btn" onclick="generateImage()">Generate</button>
         <div id="status" class="muted" style="margin-top:10px;">Ready</div>
@@ -551,9 +562,17 @@ IMAGE_TEMPLATE = """
     </div>
 
     <script>
+        function handleQualityChange() {
+            const quality = document.getElementById('quality').value;
+            if (quality === 'high') {
+                alert('High quality images cost approximately $0.035 per 1024×1024 image.');
+            }
+        }
+
         async function generateImage() {
             const idCode = {{ idn|tojson }};
             const prompt = document.getElementById('prompt').value.trim();
+            const quality = document.getElementById('quality').value;
             const status = document.getElementById('status');
             const result = document.getElementById('result');
             if (!prompt) {
@@ -566,7 +585,7 @@ IMAGE_TEMPLATE = """
                 const response = await fetch('/generate_image', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({id_code: idCode, prompt})
+                    body: JSON.stringify({id_code: idCode, prompt, quality})
                 });
                 const data = await response.json();
                 if (data.error) {
@@ -620,8 +639,8 @@ CODE_TEMPLATE = """
         <div class="top">
             <a href="/">&larr; Back to Chat</a>
             <div class="row">
-                <span class="pill">N TECH AI 2.1 N Code</span>
-                <span class="muted">Code Studio</span>
+                <span class="pill">N Tech AI N-Code: 2.2 ULTRA</span>
+                <span class="muted">N Code</span>
             </div>
         </div>
         <h2 style="margin:0 0 6px;">N-Code</h2>
@@ -629,7 +648,7 @@ CODE_TEMPLATE = """
         <div class="grid">
             <div class="muted">Signed in as: {{ idn }}</div>
             <div>
-                <input id="language" placeholder="Language / framework (e.g. Python Flask, React, Rust)">
+                <input id="language" placeholder="Language / framework (e.g. Python, HTML, Java)">
             </div>
         </div>
         <textarea id="prompt" placeholder="Describe the code to generate, requirements, and edge cases..."></textarea>
@@ -815,6 +834,30 @@ def add_account():
         return f"Error adding account: {e}", 500
 
 
+@app.route('/delete_account', methods=['POST'])
+def delete_account():
+    if not is_admin_session():
+        return redirect(url_for('index'))
+    id_code = normalize_id_code(request.form.get('id_code'))
+    if not id_code:
+        return redirect(url_for('dashboard'))
+    if id_code == ADMIN_IDN:
+        return "Cannot delete admin account", 400
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM users WHERE id_code = %s", (id_code,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        USER_MAP.pop(id_code, None)
+        if id_code in ALLOWED_IDS:
+            ALLOWED_IDS.remove(id_code)
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        return f"Error deleting account: {e}", 500
+
+
 @app.route('/data')
 def edit_data():
     if not is_admin_session():
@@ -859,7 +902,7 @@ def ask():
         return jsonify({"error": "Prompt is empty."}), 400
 
     try:
-        messages = []
+        messages = [{'role': 'system', 'content': f'Authenticated user IDN: {id_code}'}]
         for message in history:
             role = message.get('role')
             content = message.get('content', '')
@@ -908,14 +951,17 @@ def generate_image():
     data = request.json or {}
     id_code = normalize_id_code(data.get('id_code', ''))
     prompt = (data.get('prompt') or '').strip()
+    quality = (data.get('quality') or 'low').strip().lower()
 
     if not user_exists(id_code):
         return jsonify({"error": "Unauthorized Access ID"}), 403
     if not prompt:
         return jsonify({"error": "Prompt is empty."}), 400
+    if quality not in IMAGE_PRICING:
+        return jsonify({"error": "Unsupported quality selected."}), 400
 
     try:
-        image_cost = IMAGE_PRICING["low"]
+        image_cost = IMAGE_PRICING[quality]
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT total_spent, credit_limit FROM users WHERE id_code = %s", (id_code,))
@@ -931,7 +977,7 @@ def generate_image():
         res = client.images.generate(
             model=IMAGE_MODEL,
             prompt=prompt,
-            quality="low",
+            quality=quality,
             size="1024x1024"
         )
         cursor.execute("UPDATE users SET total_spent = total_spent + %s WHERE id_code = %s", (image_cost, id_code))
@@ -980,7 +1026,7 @@ def generate_code():
     try:
         res = client.responses.create(
             model=model_name,
-            input=full_prompt
+            input=f"Authenticated user IDN: {id_code}\n\n{full_prompt}"
         )
         code_answer = res.output_text
         pricing = MODEL_PRICING[model_name]
