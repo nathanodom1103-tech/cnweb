@@ -40,7 +40,7 @@ IMAGE_PRICING = {
     "high": 0.035   # higher quality estimate
 }
 IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
-ADMIN_IDN = os.environ.get("ADMIN_IDN", "nathanodom")
+ADMIN_IDN = os.environ.get("ADMIN_IDN", "nathanodom11032013151507072014198319816789")
 
 raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
