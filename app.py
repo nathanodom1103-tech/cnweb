@@ -40,7 +40,8 @@ IMAGE_PRICING = {
     "high": 0.035   # higher quality estimate
 }
 IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
-ADMIN_IDN = os.environ.get("ADMIN_IDN", "nathanodom11032013151507072014198319816789")
+VISION_MODEL = os.environ.get("OPENAI_VISION_MODEL", "gpt-4.1-mini")
+ADMIN_IDN = os.environ.get("ADMIN_IDN", "nathanodom")
 
 raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
@@ -168,7 +169,7 @@ CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI</title>
+    <title>N Tech AI 2.3</title>
     <style>
         """ + BASE_STYLE + """
         :root { --user: #e9f2ff; --assistant: #f8fafc; }
@@ -250,7 +251,7 @@ CHAT_TEMPLATE = """
         <div class="topbar">
             <div>
                 <h2 style="margin:0;">N Tech AI 2.3</h2>
-                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. N Tech AI Art competition submissions is almost closed! Images used to cost 20 credits (almost 2 cents!) per image (On basic), which we fixed, now only costing 9 credits (On basic) and 35 (on smart). N Code is fixed! 2.2 Ultra is out, and it is probably our best model yet! try it by clicking the settings to change models. N TECH AI FOUND ILLEGAL BEHAVIOUR AT 11:39 AM 5/19/26 and 5/21/26 around noon. If you know something, please tell the N Tech Staff. N Tech AI 2026</div>
+                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. N Tech AI Art competition submissions is almost closed! Images used to cost 20 credits (almost 2 cents!) per image (On basic), which we fixed, now only costing 9 credits (On basic) and 35 (on smart). N Code is fixed! 2.2 Ultra is out, and it is probably our best model yet! try it by clicking the settings to change models. N TECH AI FOUND ILLEGAL BEHAVIOUR AT 11:39 AM 5/19/26 and 5/21/26 around noon. If you know something, please tell the N Tech Staff. N Tech AI 2026. News: 2.3.8 is out! We have added many bug fixes including the fixing of the image JSON spill, now the AI can actually do it's job of scanning images! We hope you enjoy using N Tech AI, thank you for choosing us./div>
             </div>
             <div class="nav"><button class="btn" style="width:auto;" onclick="toggleSettings()">Settings</button></div>
         </div>
@@ -298,8 +299,9 @@ CHAT_TEMPLATE = """
                 <option value="gpt-4.1-nano">N Tech AI 2.0 Basic</option>
                 <option value="gpt-5.4-nano">N Tech AI 2.1 Smart</option>
                 <option value="gpt-5.4-nano">N Tech AI 2.2 Basic</option>
-                <option value="gpt-5-mini">N Tech AI 2.2 Ultra (NEW AND BEST MODEL!)</option>
+                <option value="gpt-5-mini">N Tech AI 2.2 Ultra </option>
                 <option value="gpt-4.1-nano">N Tech AI 2.3 Basic (Super cheap)</option>
+                <option value="gpt-5.4-nano">N Tech AI 2.3 Smart</option>
             </select>
         </div>
         <label class="toggle" style="margin-top:12px;">
@@ -357,13 +359,22 @@ CHAT_TEMPLATE = """
             }
 
             let finalPrompt = prompt;
+            const attachments = [];
             if (files && files.length) {
-                const fileChunks = [];
                 for (const f of files) {
-                    const text = await f.text();
-                    fileChunks.push(`\\n\\n[Attached file: ${f.name}]\\n${text.slice(0, 12000)}`);
+                    if ((f.type || '').startsWith('image/')) {
+                        const dataUrl = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(reader.result);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(f);
+                        });
+                        attachments.push({type: 'image', name: f.name, data_url: dataUrl});
+                    } else {
+                        const text = await f.text();
+                        attachments.push({type: 'text', name: f.name, text: text.slice(0, 12000)});
+                    }
                 }
-                finalPrompt += fileChunks.join('');
             }
 
             messages.push({role: 'user', content: finalPrompt});
@@ -381,7 +392,8 @@ CHAT_TEMPLATE = """
                         prompt: finalPrompt,
                         model: model,
                         memory: memory,
-                        history: memory ? messages.slice(0, -1) : []
+                        history: memory ? messages.slice(0, -1) : [],
+                        attachments: attachments
                     })
                 });
 
@@ -527,7 +539,7 @@ IMAGE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Image Generation</title>
+    <title>N Tech AI Images</title>
     <style>
         """ + BASE_STYLE + """
         body { max-width: 940px; margin: 24px auto; padding: 16px; }
@@ -544,14 +556,14 @@ IMAGE_TEMPLATE = """
     <div class="card glass">
         <div class="row">
             <a href="/">&larr; Back to Chat</a>
-            <div class="muted">N Tech Image Generation • 1024x1024</div>
+            <div class="muted">N Tech AI Images • 1024x1024</div>
         </div>
-        <h2 style="margin-top:0;">N Tech AI Images</h2>
+        <h2 style="margin-top:0;">N Tech AI Image Generation</h2>
         <div class="muted">Signed in as: {{ idn }}</div>
         <label>Quality</label>
         <select id="quality" onchange="handleQualityChange()">
-            <option value="low">Basic (~$0.009/image)</option>
-            <option value="high">Smart (~$0.035/image)</option>
+            <option value="low">Low (~$0.009/image)</option>
+            <option value="high">High (~$0.035/image)</option>
         </select>
         <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
         <button class="btn" onclick="generateImage()">Generate</button>
@@ -639,16 +651,16 @@ CODE_TEMPLATE = """
         <div class="top">
             <a href="/">&larr; Back to Chat</a>
             <div class="row">
-                <span class="pill">N Tech AI N-Code: 2.2 ULTRA</span>
-                <span class="muted">N Code</span>
+                <span class="pill">N Code</span>
+                <span class="muted">Code Studio</span>
             </div>
         </div>
         <h2 style="margin:0 0 6px;">N-Code</h2>
-        <div class="muted" style="margin-bottom:12px;">Describe what you want to build, then get clean generated code with your IDN spending + credit limits enforced.</div>
+        <div class="muted" style="margin-bottom:12px;">Describe what you want to build, then get clean generated code with N Code</div>
         <div class="grid">
-            <div class="muted">Signed in as: {{ idn }}</div>
+            <div class="muted">Your signed in!</div>
             <div>
-                <input id="language" placeholder="Language / framework (e.g. Python, HTML, Java)">
+                <input id="language" placeholder="Language / framework (e.g. Python, HTML, Javascript">
             </div>
         </div>
         <textarea id="prompt" placeholder="Describe the code to generate, requirements, and edge cases..."></textarea>
@@ -891,6 +903,7 @@ def ask():
     user_prompt = (data.get('prompt') or '').strip()
     memory_enabled = bool(data.get('memory', True))
     history = data.get('history', []) if memory_enabled else []
+    attachments = data.get('attachments', [])
 
     if not user_exists(id_code):
         return jsonify({"error": "Unauthorized Access ID"}), 403
@@ -908,12 +921,30 @@ def ask():
             content = message.get('content', '')
             if role in {'user', 'assistant'} and content:
                 messages.append({'role': role, 'content': content})
-        messages.append({'role': 'user', 'content': user_prompt})
+        user_content = [{'type': 'text', 'text': user_prompt}]
+        has_image = False
+        for item in attachments:
+            item_type = (item or {}).get('type')
+            if item_type == 'image':
+                data_url = (item or {}).get('data_url', '')
+                if data_url.startswith('data:image/'):
+                    user_content.append({'type': 'image_url', 'image_url': {'url': data_url}})
+                    has_image = True
+            elif item_type == 'text':
+                name = (item or {}).get('name', 'attachment.txt')
+                text = (item or {}).get('text', '')
+                user_content.append({'type': 'text', 'text': f"[Attached file: {name}]\n{text}"})
 
-        res = client.chat.completions.create(model=selected_model, messages=messages)
+        messages.append({'role': 'user', 'content': user_content})
+        model_for_request = VISION_MODEL if has_image else selected_model
+
+        if model_for_request not in MODEL_PRICING:
+            return jsonify({"error": f"Model pricing is not configured for {model_for_request}."}), 400
+
+        res = client.chat.completions.create(model=model_for_request, messages=messages)
         answer = res.choices[0].message.content
 
-        pricing = MODEL_PRICING[selected_model]
+        pricing = MODEL_PRICING[model_for_request]
         cost = ((res.usage.prompt_tokens / 1000) * pricing['input']) + ((res.usage.completion_tokens / 1000) * pricing['output'])
 
         conn = get_db_connection()
@@ -940,7 +971,8 @@ def ask():
             "spent": new_total[0],
             "cost": cost,
             "credits_used": new_total[0] * 1000,
-            "credit_limit": new_total[1]
+            "credit_limit": new_total[1],
+            "model_used": model_for_request
         })
     except Exception as e:
         return jsonify({"error": str(e)})
