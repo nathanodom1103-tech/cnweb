@@ -1,12 +1,17 @@
+
 from flask import Flask, render_template_string, request, jsonify, redirect, url_for, session
 from openai import OpenAI
 import os
 import psycopg2
+import base64
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ntechai-dev-secret")
 
-# --- CONFIGURATION ---
+# ----------------------------
+# OpenAI client configuration
+# ----------------------------
 def build_openai_client():
     api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("api_key")
     organization = os.environ.get("OPENAI_ORG_ID") or os.environ.get("OPENAI_ORGANIZATION")
@@ -24,7 +29,9 @@ def build_openai_client():
 
 client = build_openai_client()
 
-# Prices are USD per 1K tokens
+# ----------------------------
+# Pricing configuration
+# ----------------------------
 MODEL_PRICING = {
     "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
     "gpt-4.1-mini": {"input": 0.0004, "output": 0.0016},
@@ -35,10 +42,12 @@ MODEL_PRICING = {
     "gpt-5-mini": {"input": 0.00025, "output": 0.001},
     "gpt-5.1-codex-mini": {"input": 0.0003, "output": 0.0012},
 }
+
 IMAGE_PRICING = {
-    "low": 0.009,   # GPT Image 1.5 low quality 1024x1024 (approx)
-    "high": 0.035   # higher quality estimate
+    "low": 0.009,
+    "high": 0.035,
 }
+
 IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
 VISION_MODEL = os.environ.get("OPENAI_VISION_MODEL", "gpt-4.1-mini")
 ADMIN_IDN = os.environ.get("ADMIN_IDN", "nathanodom")
@@ -77,6 +86,17 @@ def parse_credit_limit(raw_value):
     return value if value >= 0 else "invalid"
 
 
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if DATABASE_URL and "sslmode" not in DATABASE_URL:
+    DATABASE_URL += ("&" if "?" in DATABASE_URL else "?") + "sslmode=require"
+
+
+def get_db_connection():
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is not configured")
+    return psycopg2.connect(DATABASE_URL)
+
+
 def user_exists(id_code):
     normalized = normalize_id_code(id_code)
     if not normalized:
@@ -98,17 +118,6 @@ def user_exists(id_code):
 def is_admin_session():
     return normalize_id_code(session.get("idn")) == ADMIN_IDN
 
-# --- DATABASE LOGIC ---
-DATABASE_URL = os.environ.get("DATABASE_URL")
-if DATABASE_URL and "sslmode" not in DATABASE_URL:
-    DATABASE_URL += ("&" if "?" in DATABASE_URL else "?") + "sslmode=require"
-
-
-def get_db_connection():
-    if not DATABASE_URL:
-        raise RuntimeError("DATABASE_URL is not configured")
-    return psycopg2.connect(DATABASE_URL)
-
 
 def init_db():
     if not DATABASE_URL:
@@ -116,6 +125,7 @@ def init_db():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id_code VARCHAR(50) PRIMARY KEY,
@@ -126,6 +136,28 @@ def init_db():
         """)
         cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(255);")
         cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS credit_limit FLOAT;")
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS interaction_logs (
+                id SERIAL PRIMARY KEY,
+                id_code VARCHAR(50) NOT NULL,
+                log_type VARCHAR(32) NOT NULL,
+                prompt TEXT,
+                response TEXT,
+                model TEXT,
+                cost FLOAT DEFAULT 0.0,
+                media_name TEXT,
+                media_mime TEXT,
+                media_b64 TEXT,
+                analysis TEXT,
+                quality TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_interaction_logs_created_at ON interaction_logs (created_at DESC);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_interaction_logs_id_code ON interaction_logs (id_code);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_interaction_logs_type ON interaction_logs (log_type);")
+
         for id_code in get_allowed_ids():
             cursor.execute(
                 """
@@ -135,6 +167,7 @@ def init_db():
                 """,
                 (id_code, USER_MAP.get(id_code, id_code))
             )
+
         conn.commit()
         cursor.close()
         conn.close()
@@ -144,130 +177,213 @@ def init_db():
 
 init_db()
 
-# --- HTML TEMPLATES ---
+# ----------------------------
+# DB helpers
+# ----------------------------
+def get_user_account(id_code):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT total_spent, credit_limit, display_name FROM users WHERE id_code = %s", (id_code,))
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return row
+
+
+def update_user_spent(id_code, additional_cost):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET total_spent = total_spent + %s WHERE id_code = %s", (additional_cost, id_code))
+    conn.commit()
+    cursor.execute("SELECT total_spent, credit_limit FROM users WHERE id_code = %s", (id_code,))
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return row
+
+
+def insert_log(
+    id_code,
+    log_type,
+    prompt="",
+    response="",
+    model="",
+    cost=0.0,
+    media_name=None,
+    media_mime=None,
+    media_b64=None,
+    analysis=None,
+    quality=None,
+):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO interaction_logs
+            (id_code, log_type, prompt, response, model, cost, media_name, media_mime, media_b64, analysis, quality)
+        VALUES
+            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id;
+        """,
+        (id_code, log_type, prompt, response, model, cost, media_name, media_mime, media_b64, analysis, quality),
+    )
+    new_id = cursor.fetchone()[0]
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return new_id
+
+
+def delete_log(log_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM interaction_logs WHERE id = %s", (log_id,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+def fetch_logs(limit=120):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, id_code, log_type, prompt, response, model, cost, media_name, media_mime, media_b64, analysis, quality, created_at
+        FROM interaction_logs
+        ORDER BY created_at DESC
+        LIMIT %s;
+        """,
+        (limit,),
+    )
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return rows
+
+
+def approx_tokens_from_text(text):
+    return max(1, int(len(text or "") / 4))
+
+
+def cost_from_usage(model_name, prompt_tokens=0, completion_tokens=0):
+    pricing = MODEL_PRICING.get(model_name)
+    if not pricing:
+        return 0.0
+    return ((prompt_tokens / 1000) * pricing["input"]) + ((completion_tokens / 1000) * pricing["output"])
+
+
+def analyze_image_with_vision(data_url, prompt="Describe this image in detail.", model=None):
+    vision_model = model or VISION_MODEL
+    res = client.chat.completions.create(
+        model=vision_model,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a precise image analysis assistant. Describe the image clearly and briefly, then mention notable objects, text, actions, and safety issues if present.",
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": data_url}},
+                ],
+            },
+        ],
+    )
+    text = res.choices[0].message.content or ""
+    usage = getattr(res, "usage", None)
+    prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+    completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+    cost = cost_from_usage(vision_model, prompt_tokens, completion_tokens)
+    return text, cost, vision_model
+
+
+def is_allowed_image_mime(mime_type):
+    return mime_type in {"image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"}
+
+
+# ----------------------------
+# HTML templates
+# ----------------------------
 BASE_STYLE = """
-        :root {
-            color-scheme: light;
-            --bg: #f3f6fb;
-            --card: #ffffff;
-            --border: #d8e1ef;
-            --primary: #2563eb;
-            --primary-2: #1d4ed8;
-            --muted: #667085;
-            --text: #0f172a;
-        }
-        * { box-sizing: border-box; }
-        body { font-family: Inter, system-ui, sans-serif; margin: 0; background: radial-gradient(1200px 600px at 20% -10%, #dbeafe 0%, transparent 40%), var(--bg); color: var(--text); }
-        .glass { background: rgba(255,255,255,.9); backdrop-filter: blur(6px); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08); }
-        .btn { padding: 11px 14px; border: 0; border-radius: 10px; cursor: pointer; font-weight: 700; background: linear-gradient(180deg, var(--primary), var(--primary-2)); color: #fff; }
-        .btn.secondary { background: #475467; }
-        input, textarea, select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: #fff; color: var(--text); }
-        .muted { color: var(--muted); }
+:root {
+    color-scheme: light;
+    --bg: #f3f6fb;
+    --card: #ffffff;
+    --border: #d8e1ef;
+    --primary: #2563eb;
+    --primary-2: #1d4ed8;
+    --muted: #667085;
+    --text: #0f172a;
+}
+* { box-sizing: border-box; }
+body { font-family: Inter, system-ui, sans-serif; margin: 0; background: radial-gradient(1200px 600px at 20% -10%, #dbeafe 0%, transparent 40%), var(--bg); color: var(--text); }
+.glass { background: rgba(255,255,255,.9); backdrop-filter: blur(6px); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08); }
+.btn { padding: 11px 14px; border: 0; border-radius: 10px; cursor: pointer; font-weight: 700; background: linear-gradient(180deg, var(--primary), var(--primary-2)); color: #fff; }
+.btn.secondary { background: #475467; }
+.btn.danger { background: #dc2626; }
+input, textarea, select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: #fff; color: var(--text); }
+.muted { color: var(--muted); }
+table { width: 100%; border-collapse: collapse; }
+th, td { border-bottom: 1px solid #e5e7eb; padding: 10px; vertical-align: top; text-align: left; }
+th { background: #f8fafc; }
+small { color: var(--muted); }
 """
+
 
 CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>N Tech AI 2.3</title>
+    <title>N Tech AI 2.4</title>
     <style>
         """ + BASE_STYLE + """
         :root { --user: #e9f2ff; --assistant: #f8fafc; }
-        body { font-family: Inter, system-ui, sans-serif; margin: 0; background: var(--bg); color: #111827; height: 100vh; overflow: hidden; }
+        body { height: 100vh; overflow: hidden; }
         .card { height: 100vh; display:flex; flex-direction:column; background: var(--card); padding: 18px; }
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-        .controls { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 12px 0; }
-        input, textarea, select {
-            width: 100%;
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            box-sizing: border-box;
-            background: #fff;
-        }
-        textarea { min-height: 70px; resize: vertical; }
-        button {
-            padding: 12px 16px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 600;
-            width: 100%;
-        }
-        .muted { color: var(--muted); font-size: 0.9rem; }
-        .chat { flex:1; background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-top: 12px; overflow-y: auto; }
-        .msg { padding: 10px 12px; border-radius: 10px; margin-bottom: 10px; white-space: pre-wrap; }
+        .topbar { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px; }
+        .row { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+        .chat { flex:1; background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px; margin-top:12px; overflow-y:auto; }
+        .msg { padding:10px 12px; border-radius:10px; margin-bottom:10px; white-space:pre-wrap; }
         .msg.user { background: var(--user); }
         .msg.assistant { background: var(--assistant); }
-        .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-        .toggle { display: flex; align-items: center; gap: 8px; }
-        .toggle input { width: auto; }
-        .nav a { color: var(--primary); text-decoration: none; font-weight: 600; }
-        .composer { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
-        .prompt-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
-        .panel { position: fixed; right: -360px; top: 0; width: 340px; height: 100vh; background:#fff; border-left:1px solid var(--border); padding:16px; transition:right .2s ease; z-index:10001; overflow:auto; box-shadow: -8px 0 24px rgba(2,6,23,.12); }
-        .panel.open { right: 0; }
+        .controls { display:grid; grid-template-columns:1fr; gap:10px; margin:12px 0; }
+        textarea { min-height: 70px; resize: vertical; }
+        .composer { margin-top:12px; border-top:1px solid var(--border); padding-top:12px; }
+        .prompt-row { display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:end; }
+        .panel { position:fixed; right:-360px; top:0; width:340px; height:100vh; background:#fff; border-left:1px solid var(--border); padding:16px; transition:right .2s ease; z-index:10001; overflow:auto; box-shadow:-8px 0 24px rgba(2,6,23,.12); }
+        .panel.open { right:0; }
         .panel-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-        .intro {
-            position: fixed;
-            inset: 0;
-            background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            animation: introFadeOut 1s ease 1.8s forwards;
-        }
-        .intro .logo {
-            font-size: min(36vw, 300px);
-            font-weight: 900;
-            color: white;
-            line-height: 1;
-            opacity: 0;
-            transform: scale(0.92);
-            animation: nReveal 1.1s ease forwards;
-        }
-        @keyframes nReveal {
-            from { opacity: 0; transform: scale(0.92); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        @keyframes introFadeOut {
-            from { opacity: 1; visibility: visible; }
-            to { opacity: 0; visibility: hidden; }
-        }
+        .intro { position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; z-index:9999; animation:introFadeOut 1s ease 1.8s forwards; }
+        .intro .logo { font-size:min(36vw, 300px); font-weight:900; color:white; line-height:1; opacity:0; transform:scale(0.92); animation:nReveal 1.1s ease forwards; }
+        .pill { display:inline-block; background:#eef2ff; color:#1e3a8a; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; }
+        .preview { max-width:120px; max-height:120px; border-radius:10px; border:1px solid var(--border); display:block; margin-top:8px; }
+        @keyframes nReveal { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
+        @keyframes introFadeOut { from { opacity:1; visibility:visible; } to { opacity:0; visibility:hidden; } }
     </style>
 </head>
 <body>
-    <div class="intro" id="introSplash"><div class="logo">N</div></div>
+    <div class="intro" id="introSplash"><div class="logo">N Tech AI</div></div>
     <div class="card glass">
         <div class="topbar">
             <div>
-                <h2 style="margin:0;">N Tech AI 2.3</h2>
-                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. N Tech AI Art competition submissions is almost closed! Images used to cost 20 credits (almost 2 cents!) per image (On basic), which we fixed, now only costing 9 credits (On basic) and 35 (on smart). N Code is fixed! 2.2 Ultra is out, and it is probably our best model yet! try it by clicking the settings to change models. N TECH AI FOUND ILLEGAL BEHAVIOUR AT 11:39 AM 5/19/26 and 5/21/26 around noon. If you know something, please tell the N Tech Staff. N Tech AI 2026. News: 2.3.8 is out! We have added many bug fixes including the fixing of the image JSON spill, now the AI can actually do it's job of scanning images! We hope you enjoy using N Tech AI, thank you for choosing us./div>
+                <h2 style="margin:0;">N Tech AI 2.4</h2>
+                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. N Tech AI Art competition submissions is almost closed! Images used to cost 20 credits (almost 2 cents!) per image (On basic), which we fixed, now only costing 9 credits (On basic) and 35 (on smart). N Code is fixed! 2.2 Ultra is out, and it is probably our best model yet! try it by clicking the settings to change models. N TECH AI FOUND ILLEGAL BEHAVIOUR AT 11:39 AM 5/19/26 and 5/21/26 around noon. If you know something, please tell the N Tech Staff. N Tech AI 2026. 2.4 is out!!! New features include: better photo scanning, enhanced image generation, and more!</div>
             </div>
-            <div class="nav"><button class="btn" style="width:auto;" onclick="toggleSettings()">Settings</button></div>
+            <div><button class="btn" style="width:auto;" onclick="toggleSettings()">Settings</button></div>
         </div>
 
         <div class="chat" id="chatHistory"></div>
 
         <div class="composer">
-            <div class="controls"></div>
             <div class="row">
-                <label class="toggle">
-                    <input type="checkbox" id="memoryToggle" checked>
+                <label style="display:flex;align-items:center;gap:8px;">
+                    <input type="checkbox" id="memoryToggle" checked style="width:auto;">
                     Remember previous outputs for context
                 </label>
                 <button class="btn secondary" style="width:auto;" onclick="clearHistory()">Clear chat</button>
             </div>
-            <input id="fileInput" type="file" multiple style="margin-bottom:10px;" />
+            <input id="fileInput" type="file" multiple style="margin:10px 0;" />
             <div class="prompt-row">
                 <textarea id="userInput" placeholder="Ask anything..."></textarea>
                 <button class="btn" style="width:auto;" onclick="askAI()">Send to AI</button>
@@ -282,6 +398,7 @@ CHAT_TEMPLATE = """
             <div id="creditsBar" style="height:10px;width:0%;background:#2563eb;"></div>
         </div>
     </div>
+
     <aside class="panel" id="settingsPanel">
         <div class="panel-head">
             <h3 style="margin:0;">Settings</h3>
@@ -299,19 +416,19 @@ CHAT_TEMPLATE = """
                 <option value="gpt-4.1-nano">N Tech AI 2.0 Basic</option>
                 <option value="gpt-5.4-nano">N Tech AI 2.1 Smart</option>
                 <option value="gpt-5.4-nano">N Tech AI 2.2 Basic</option>
-                <option value="gpt-5-mini">N Tech AI 2.2 Ultra </option>
+                <option value="gpt-5-mini">N Tech AI 2.2 Ultra</option>
                 <option value="gpt-4.1-nano">N Tech AI 2.3 Basic (Super cheap)</option>
                 <option value="gpt-5.4-nano">N Tech AI 2.3 Smart</option>
             </select>
         </div>
-        <label class="toggle" style="margin-top:12px;">
-            <input type="checkbox" id="panelMemory" checked onchange="document.getElementById('memoryToggle').checked=this.checked;">
+        <label style="display:flex;align-items:center;gap:8px;margin-top:12px;">
+            <input type="checkbox" id="panelMemory" checked onchange="document.getElementById('memoryToggle').checked=this.checked;" style="width:auto;">
             Remember previous outputs
         </label>
         <div style="margin-top:14px;display:grid;gap:8px;">
             <a href="/image">Open Image Generator</a>
             <a href="/code">Open N-Code</a>
-            {% if is_admin %}<a href="/dashboard" id="adminLink">Open Admin Dashboard</a>{% endif %}
+            {% if is_admin %}<a href="/dashboard">Open Admin Dashboard</a>{% endif %}
             <a href="/logout">Sign out</a>
         </div>
     </aside>
@@ -323,26 +440,38 @@ CHAT_TEMPLATE = """
             document.getElementById('settingsPanel').classList.toggle('open');
         }
 
-        function renderHistory() {
-            const wrap = document.getElementById('chatHistory');
-            if (!messages.length) {
-                wrap.innerHTML = '<div class="muted">No messages yet. Start chatting.</div>';
-                return;
-            }
-            wrap.innerHTML = messages.map(m => `<div class="msg ${m.role}"><strong>${m.role === 'user' ? 'You' : 'AI'}:</strong> ${escapeHtml(m.content)}</div>`).join('');
-            wrap.scrollTop = wrap.scrollHeight;
-        }
-
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.innerText = text || '';
             return div.innerHTML;
         }
 
+        function renderHistory() {
+            const wrap = document.getElementById('chatHistory');
+            if (!messages.length) {
+                wrap.innerHTML = '<div class="muted">No messages yet. Start chatting.</div>';
+                return;
+            }
+            wrap.innerHTML = messages.map(m => {
+                const imageHtml = (m.preview ? `<div><small>${escapeHtml(m.preview.label || '')}</small><img class="preview" src="${m.preview.src}" alt="attachment preview"></div>` : '');
+                return `<div class="msg ${m.role}"><strong>${m.role === 'user' ? 'You' : 'AI'}:</strong> ${escapeHtml(m.content)}${imageHtml}</div>`;
+            }).join('');
+            wrap.scrollTop = wrap.scrollHeight;
+        }
+
         function clearHistory() {
             messages = [];
             renderHistory();
             document.getElementById('status').innerText = 'Chat cleared';
+        }
+
+        async function fileToDataUrl(file) {
+            return await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
         }
 
         async function askAI() {
@@ -358,18 +487,12 @@ CHAT_TEMPLATE = """
                 return;
             }
 
-            let finalPrompt = prompt;
             const attachments = [];
             if (files && files.length) {
                 for (const f of files) {
                     if ((f.type || '').startsWith('image/')) {
-                        const dataUrl = await new Promise((resolve, reject) => {
-                            const reader = new FileReader();
-                            reader.onload = () => resolve(reader.result);
-                            reader.onerror = reject;
-                            reader.readAsDataURL(f);
-                        });
-                        attachments.push({type: 'image', name: f.name, data_url: dataUrl});
+                        const dataUrl = await fileToDataUrl(f);
+                        attachments.push({type: 'image', name: f.name, mime: f.type, data_url: dataUrl});
                     } else {
                         const text = await f.text();
                         attachments.push({type: 'text', name: f.name, text: text.slice(0, 12000)});
@@ -377,7 +500,11 @@ CHAT_TEMPLATE = """
                 }
             }
 
-            messages.push({role: 'user', content: finalPrompt});
+            const previews = attachments
+                .filter(a => a.type === 'image')
+                .map(a => ({label: a.name, src: a.data_url}));
+
+            messages.push({role: 'user', content: prompt, preview: previews[0] || null});
             renderHistory();
             document.getElementById('userInput').value = '';
             document.getElementById('fileInput').value = '';
@@ -389,20 +516,20 @@ CHAT_TEMPLATE = """
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         id_code: id,
-                        prompt: finalPrompt,
+                        prompt: prompt,
                         model: model,
                         memory: memory,
-                        history: memory ? messages.slice(0, -1) : [],
+                        history: memory ? messages.slice(0, -1).map(m => ({role: m.role, content: m.content})) : [],
                         attachments: attachments
                     })
                 });
 
-            const data = await response.json();
+                const data = await response.json();
                 if (data.error) {
                     messages.push({role: 'assistant', content: 'Error: ' + data.error});
                     status.innerText = 'Error';
                 } else {
-                    messages.push({role: 'assistant', content: data.answer});
+                    messages.push({role: 'assistant', content: data.answer || ''});
                     document.getElementById('totalDisplay').innerText = Number(data.spent || 0).toFixed(6);
                     const used = Number(data.credits_used || 0);
                     const limit = data.credit_limit;
@@ -416,7 +543,7 @@ CHAT_TEMPLATE = """
                         limitText.innerText = '';
                         bar.style.width = `${Math.min(used, 100)}%`;
                     }
-                    status.innerText = memory ? 'Replied (memory on)' : 'Replied (memory off)';
+                    status.innerText = data.has_image ? 'Replied (vision scan on)' : 'Replied';
                 }
                 renderHistory();
             } catch (e) {
@@ -438,23 +565,33 @@ CHAT_TEMPLATE = """
 </html>
 """
 
+
 LOGIN_TEMPLATE = """
 <!DOCTYPE html>
-<html><head><title>Sign In - N Tech AI</title>
-<style>
-body{font-family:Inter,system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#f5f7fb;margin:0}
-.card{background:#fff;border:1px solid #d9e1ee;border-radius:16px;padding:28px;min-width:340px}
-input,button{width:100%;padding:11px 12px;border-radius:10px;border:1px solid #d9e1ee;box-sizing:border-box}
-button{margin-top:10px;background:#2563eb;color:#fff;border:none;font-weight:700}
-.err{color:#b42318;margin-top:10px}
-</style></head><body><div class="card">
-<h2 style="margin-top:0;">N Tech AI Sign In</h2>
-<form method="POST" action="/login">
-<input name="idn" type="password" placeholder="Enter IDN" required />
-<button type="submit">Continue</button>
-{% if error %}<div class="err">{{ error }}</div>{% endif %}
-</form></div></body></html>
+<html>
+<head>
+    <title>Sign In - N Tech AI</title>
+    <style>
+        body{font-family:Inter,system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#f5f7fb;margin:0}
+        .card{background:#fff;border:1px solid #d9e1ee;border-radius:16px;padding:28px;min-width:340px}
+        input,button{width:100%;padding:11px 12px;border-radius:10px;border:1px solid #d9e1ee;box-sizing:border-box}
+        button{margin-top:10px;background:#2563eb;color:#fff;border:none;font-weight:700}
+        .err{color:#b42318;margin-top:10px}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2 style="margin-top:0;">N Tech AI Sign In</h2>
+        <form method="POST" action="/login">
+            <input name="idn" type="password" placeholder="Enter IDN" required />
+            <button type="submit">Continue</button>
+            {% if error %}<div class="err">{{ error }}</div>{% endif %}
+        </form>
+    </div>
+</body>
+</html>
 """
+
 
 DASHBOARD_TEMPLATE = """
 <!DOCTYPE html>
@@ -462,48 +599,116 @@ DASHBOARD_TEMPLATE = """
 <head>
     <title>Admin Dashboard</title>
     <style>
-        body { font-family: sans-serif; max-width: 700px; margin: 50px auto; padding: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 15px; text-align: left; }
-        th { background-color: #007bff; color: white; }
-        .nav { display: flex; justify-content: space-between; margin-bottom: 20px; }
-        .nav a { color: #007bff; text-decoration: none; font-weight: bold; }
-        .edit-btn { background: #28a745; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-size: 0.9rem; }
+        """ + BASE_STYLE + """
+        body { max-width: 1200px; margin: 34px auto; padding: 16px; }
+        .topnav { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:18px; }
+        .card { background:#fff; border:1px solid #d9e1ee; border-radius:16px; padding:18px; margin-bottom:18px; }
+        .grid { display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:8px; align-items:end; }
+        .log-grid { display:grid; grid-template-columns: 1fr; gap:12px; }
+        .log-card { border:1px solid #e5e7eb; border-radius:14px; padding:14px; background:#fff; }
+        .log-meta { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+        .thumb { max-width:180px; max-height:180px; border-radius:12px; border:1px solid #d9e1ee; display:block; margin-top:10px; }
+        .actions { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
+        .muted { color:#667085; }
+        a { color:#2563eb; text-decoration:none; font-weight:600; }
     </style>
 </head>
 <body>
-    <div class="nav">
+    <div class="topnav">
         <a href="/">&larr; Back to Chat</a>
-        <a href="/data" class="edit-btn">Manage Data (Edit Balances)</a>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <a href="/data">Manage Data</a>
+            <a href="/dashboard">Refresh</a>
+        </div>
     </div>
-    <h2>User Spend Dashboard</h2>
-    <form action="/add_account" method="POST" style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end;">
-        <div><label>ID Code</label><input name="id_code" required></div>
-        <div><label>Display Name</label><input name="display_name" required></div>
-        <div><label>Credit Limit</label><input name="credit_limit" type="number" step="0.01" min="0" placeholder="e.g. 10"></div>
-        <button type="submit" class="edit-btn" style="border:none;cursor:pointer;">Add Account</button>
-    </form>
-    <table>
-        <tr><th>Assigned Name</th><th>ID Code</th><th>Total Spent ($)</th><th>Credits Used</th><th>Credit Limit</th><th>Actions</th></tr>
-        {% for row in data %}
-        <tr>
-            <td>{{ row[2] or user_map.get(row[0], row[0]) }}</td>
-            <td>{{ row[0] }}</td>
-            <td>${{ "%.6f"|format(row[1]) }}</td>
-            <td>{{ "%.2f"|format(row[1] * 1000) }}</td>
-            <td>{{ "%.2f"|format(row[3]) if row[3] is not none else "—" }}</td>
-            <td>
-                <form action="/delete_account" method="POST" onsubmit="return confirm('Delete this account?');">
-                    <input type="hidden" name="id_code" value="{{ row[0] }}">
-                    <button type="submit" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer;">Delete</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+
+    <div class="card">
+        <h2 style="margin-top:0;">User Spend Dashboard</h2>
+        <form action="/add_account" method="POST" class="grid">
+            <div><label>ID Code</label><input name="id_code" required></div>
+            <div><label>Display Name</label><input name="display_name" required></div>
+            <div><label>Credit Limit</label><input name="credit_limit" type="number" step="0.01" min="0" placeholder="e.g. 10"></div>
+            <button type="submit" class="btn" style="border:none;cursor:pointer;">Add Account</button>
+        </form>
+
+        <div style="overflow-x:auto;margin-top:14px;">
+            <table>
+                <tr>
+                    <th>Assigned Name</th><th>ID Code</th><th>Total Spent ($)</th><th>Credits Used</th><th>Credit Limit</th><th>Actions</th>
+                </tr>
+                {% for row in data %}
+                <tr>
+                    <td>{{ row[2] or user_map.get(row[0], row[0]) }}</td>
+                    <td>{{ row[0] }}</td>
+                    <td>${{ "%.6f"|format(row[1]) }}</td>
+                    <td>{{ "%.2f"|format(row[1] * 1000) }}</td>
+                    <td>{{ "%.2f"|format(row[3]) if row[3] is not none else "—" }}</td>
+                    <td>
+                        <form action="/delete_account" method="POST" onsubmit="return confirm('Delete this account?');">
+                            <input type="hidden" name="id_code" value="{{ row[0] }}">
+                            <button type="submit" class="btn danger" style="border:none;">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="log-meta">
+            <h2 style="margin:0;">Recent Logs</h2>
+            <div class="muted">Dismissed logs are removed from the database</div>
+        </div>
+        <div class="log-grid">
+            {% for log in logs %}
+            <div class="log-card">
+                <div class="log-meta">
+                    <div>
+                        <strong>{{ user_map.get(log[1], log[1]) }}</strong>
+                        <div class="muted">#{{ log[0] }} • {{ log[2] }} • {{ log[12] }}</div>
+                    </div>
+                    <div class="muted">{{ log[5] or 'no model' }}{% if log[6] %} • ${{ "%.6f"|format(log[6]) }}{% endif %}</div>
+                </div>
+
+                {% if log[3] %}
+                <div><strong>Prompt:</strong> {{ log[3] }}</div>
+                {% endif %}
+
+                {% if log[2] == 'chat' %}
+                    <div style="margin-top:8px;"><strong>Response:</strong> {{ log[4] }}</div>
+                {% elif log[2] == 'vision_scan' %}
+                    <div style="margin-top:8px;"><strong>Scan:</strong> {{ log[10] or log[4] }}</div>
+                {% elif log[2] == 'image_generation' %}
+                    <div style="margin-top:8px;"><strong>Generated image</strong></div>
+                {% endif %}
+
+                {% if log[8] %}
+                    <img class="thumb" src="{{ log[8] }}" alt="image preview">
+                {% endif %}
+
+                {% if log[7] %}
+                    <div class="muted" style="margin-top:6px;">File: {{ log[7] }}</div>
+                {% endif %}
+
+                {% if log[9] %}
+                    <div class="muted" style="margin-top:6px;">Analysis: {{ log[9] }}</div>
+                {% endif %}
+
+                <div class="actions">
+                    <form action="/dismiss_log" method="POST" onsubmit="return confirm('Dismiss this log entry?');">
+                        <input type="hidden" name="log_id" value="{{ log[0] }}">
+                        <button type="submit" class="btn danger" style="border:none;">Dismiss</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
 </body>
 </html>
 """
+
 
 DATA_EDIT_TEMPLATE = """
 <!DOCTYPE html>
@@ -535,6 +740,7 @@ DATA_EDIT_TEMPLATE = """
 </html>
 """
 
+
 IMAGE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -546,7 +752,7 @@ IMAGE_TEMPLATE = """
         .card { padding: 20px; }
         textarea { min-height: 120px; resize: vertical; margin-bottom: 10px; }
         button { font-weight: 700; }
-        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; }
         .muted { color: #667085; font-size: 0.9rem; }
         img { max-width: 100%; border-radius: 12px; margin-top: 12px; border: 1px solid #d9e1ee; }
         a { color: #2563eb; text-decoration: none; font-weight: 600; }
@@ -621,6 +827,7 @@ IMAGE_TEMPLATE = """
 </html>
 """
 
+
 CODE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -631,12 +838,9 @@ CODE_TEMPLATE = """
         body { max-width: 1200px; margin: 24px auto; padding: 16px; color:#111827; }
         .card { padding:20px; }
         .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-        .muted { color:#667085; }
         .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-        input, textarea, select, button { width:100%; padding:11px 12px; border-radius:10px; border:1px solid #d9e1ee; box-sizing:border-box; }
         textarea { min-height:140px; resize:vertical; }
-        .btn { border:none; }
-        pre { background:#0b1020; color:#d7e3ff; border-radius:12px; padding:14px; overflow:auto; min-height:120px; margin-top:12px; }
+        pre { background:#0b1020; color:#d7e3ff; border-radius:12px; padding:14px; overflow:auto; min-height:120px; margin-top:12px; white-space:pre-wrap; }
         .blocks { margin-top: 12px; display: grid; gap: 12px; }
         .code-card { border: 1px solid #1f2a44; border-radius: 12px; overflow: hidden; background: #0b1020; }
         .code-head { padding: 8px 12px; font-size: 12px; color: #cbd5e1; background: #111a2f; border-bottom: 1px solid #1f2a44; display:flex; justify-content:space-between; align-items:center; }
@@ -658,10 +862,8 @@ CODE_TEMPLATE = """
         <h2 style="margin:0 0 6px;">N-Code</h2>
         <div class="muted" style="margin-bottom:12px;">Describe what you want to build, then get clean generated code with N Code</div>
         <div class="grid">
-            <div class="muted">Your signed in!</div>
-            <div>
-                <input id="language" placeholder="Language / framework (e.g. Python, HTML, Javascript">
-            </div>
+            <div class="muted">Signed in as {{ idn }}</div>
+            <div><input id="language" placeholder="Language / framework (e.g. Python, HTML, Javascript)"></div>
         </div>
         <textarea id="prompt" placeholder="Describe the code to generate, requirements, and edge cases..."></textarea>
         <button class="btn" onclick="generateCode()">Generate Code</button>
@@ -751,53 +953,57 @@ CODE_TEMPLATE = """
 </html>
 """
 
-
-@app.route('/')
+# ----------------------------
+# Routes
+# ----------------------------
+@app.route("/")
 def index():
     if not session.get("idn") or not user_exists(session.get("idn")):
         session.pop("idn", None)
-        return redirect(url_for('login_page'))
+        return redirect(url_for("login_page"))
     return render_template_string(CHAT_TEMPLATE, idn=session.get("idn"), is_admin=is_admin_session())
 
 
-@app.route('/login', methods=['GET'])
+@app.route("/login", methods=["GET"])
 def login_page():
     return render_template_string(LOGIN_TEMPLATE, error=None)
 
 
-@app.route('/login', methods=['POST'])
+@app.route("/login", methods=["POST"])
 def login_action():
-    idn = normalize_id_code(request.form.get('idn'))
+    idn = normalize_id_code(request.form.get("idn"))
     if not user_exists(idn):
         return render_template_string(LOGIN_TEMPLATE, error="Invalid IDN"), 403
     session["idn"] = idn
-    return redirect(url_for('index'))
+    return redirect(url_for("index"))
 
 
-@app.route('/logout')
+@app.route("/logout")
 def logout():
     session.pop("idn", None)
-    return redirect(url_for('login_page'))
+    return redirect(url_for("login_page"))
 
-@app.route('/image')
+
+@app.route("/image")
 def image_page():
     if not session.get("idn") or not user_exists(session.get("idn")):
         session.pop("idn", None)
-        return redirect(url_for('login_page'))
+        return redirect(url_for("login_page"))
     return render_template_string(IMAGE_TEMPLATE, idn=session.get("idn"))
 
-@app.route('/code')
+
+@app.route("/code")
 def code_page():
     if not session.get("idn") or not user_exists(session.get("idn")):
         session.pop("idn", None)
-        return redirect(url_for('login_page'))
+        return redirect(url_for("login_page"))
     return render_template_string(CODE_TEMPLATE, idn=session.get("idn"))
 
 
-@app.route('/dashboard')
+@app.route("/dashboard")
 def dashboard():
     if not is_admin_session():
-        return redirect(url_for('index'))
+        return redirect(url_for("index"))
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -805,18 +1011,33 @@ def dashboard():
         db_data = cursor.fetchall()
         cursor.close()
         conn.close()
-        return render_template_string(DASHBOARD_TEMPLATE, data=db_data, user_map=USER_MAP)
+
+        logs = fetch_logs(limit=100)
+        return render_template_string(DASHBOARD_TEMPLATE, data=db_data, user_map=USER_MAP, logs=logs)
     except Exception as e:
         return f"Dashboard unavailable: {e}", 500
 
 
-@app.route('/add_account', methods=['POST'])
+@app.route("/dismiss_log", methods=["POST"])
+def dismiss_log():
+    if not is_admin_session():
+        return redirect(url_for("index"))
+    log_id = request.form.get("log_id")
+    try:
+        if log_id:
+            delete_log(int(log_id))
+    except Exception as e:
+        return f"Error dismissing log: {e}", 500
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/add_account", methods=["POST"])
 def add_account():
     if not is_admin_session():
-        return redirect(url_for('index'))
-    id_code = normalize_id_code(request.form.get('id_code'))
-    display_name = (request.form.get('display_name') or '').strip() or id_code
-    credit_limit = parse_credit_limit(request.form.get('credit_limit'))
+        return redirect(url_for("index"))
+    id_code = normalize_id_code(request.form.get("id_code"))
+    display_name = (request.form.get("display_name") or "").strip() or id_code
+    credit_limit = parse_credit_limit(request.form.get("credit_limit"))
 
     if not id_code:
         return "ID code is required", 400
@@ -833,7 +1054,7 @@ def add_account():
             ON CONFLICT (id_code) DO UPDATE
             SET display_name = EXCLUDED.display_name, credit_limit = EXCLUDED.credit_limit;
             """,
-            (id_code, display_name, credit_limit)
+            (id_code, display_name, credit_limit),
         )
         conn.commit()
         cursor.close()
@@ -841,18 +1062,18 @@ def add_account():
         if id_code not in ALLOWED_IDS:
             ALLOWED_IDS.append(id_code)
         USER_MAP[id_code] = display_name
-        return redirect(url_for('dashboard'))
+        return redirect(url_for("dashboard"))
     except Exception as e:
         return f"Error adding account: {e}", 500
 
 
-@app.route('/delete_account', methods=['POST'])
+@app.route("/delete_account", methods=["POST"])
 def delete_account():
     if not is_admin_session():
-        return redirect(url_for('index'))
-    id_code = normalize_id_code(request.form.get('id_code'))
+        return redirect(url_for("index"))
+    id_code = normalize_id_code(request.form.get("id_code"))
     if not id_code:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for("dashboard"))
     if id_code == ADMIN_IDN:
         return "Cannot delete admin account", 400
     try:
@@ -865,24 +1086,24 @@ def delete_account():
         USER_MAP.pop(id_code, None)
         if id_code in ALLOWED_IDS:
             ALLOWED_IDS.remove(id_code)
-        return redirect(url_for('dashboard'))
+        return redirect(url_for("dashboard"))
     except Exception as e:
         return f"Error deleting account: {e}", 500
 
 
-@app.route('/data')
+@app.route("/data")
 def edit_data():
     if not is_admin_session():
-        return redirect(url_for('index'))
+        return redirect(url_for("index"))
     return render_template_string(DATA_EDIT_TEMPLATE, allowed_ids=get_allowed_ids(), user_map=USER_MAP)
 
 
-@app.route('/update_data', methods=['POST'])
+@app.route("/update_data", methods=["POST"])
 def update_data():
     if not is_admin_session():
-        return redirect(url_for('index'))
-    id_code = request.form.get('id_code')
-    new_amount = request.form.get('new_amount')
+        return redirect(url_for("index"))
+    id_code = request.form.get("id_code")
+    new_amount = request.form.get("new_amount")
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -890,20 +1111,20 @@ def update_data():
         conn.commit()
         cursor.close()
         conn.close()
-        return redirect(url_for('dashboard'))
+        return redirect(url_for("dashboard"))
     except Exception as e:
         return f"Error updating database: {e}", 500
 
 
-@app.route('/ask', methods=['POST'])
+@app.route("/ask", methods=["POST"])
 def ask():
     data = request.json or {}
-    id_code = normalize_id_code(data.get('id_code', ''))
-    selected_model = data.get('model', 'gpt-4o-mini')
-    user_prompt = (data.get('prompt') or '').strip()
-    memory_enabled = bool(data.get('memory', True))
-    history = data.get('history', []) if memory_enabled else []
-    attachments = data.get('attachments', [])
+    id_code = normalize_id_code(data.get("id_code", ""))
+    selected_model = data.get("model", "gpt-4o-mini")
+    user_prompt = (data.get("prompt") or "").strip()
+    memory_enabled = bool(data.get("memory", True))
+    history = data.get("history", []) if memory_enabled else []
+    attachments = data.get("attachments", [])
 
     if not user_exists(id_code):
         return jsonify({"error": "Unauthorized Access ID"}), 403
@@ -915,37 +1136,46 @@ def ask():
         return jsonify({"error": "Prompt is empty."}), 400
 
     try:
-        messages = [{'role': 'system', 'content': f'Authenticated user IDN: {id_code}'}]
+        messages = [{"role": "system", "content": f"Authenticated user IDN: {id_code}"}]
         for message in history:
-            role = message.get('role')
-            content = message.get('content', '')
-            if role in {'user', 'assistant'} and content:
-                messages.append({'role': role, 'content': content})
-        user_content = [{'type': 'text', 'text': user_prompt}]
-        has_image = False
+            role = message.get("role")
+            content = message.get("content", "")
+            if role in {"user", "assistant"} and content:
+                messages.append({"role": role, "content": content})
+
+        user_content = [{"type": "text", "text": user_prompt}]
+        image_entries = []
+        text_entries = []
+
         for item in attachments:
-            item_type = (item or {}).get('type')
-            if item_type == 'image':
-                data_url = (item or {}).get('data_url', '')
-                if data_url.startswith('data:image/'):
-                    user_content.append({'type': 'image_url', 'image_url': {'url': data_url}})
-                    has_image = True
-            elif item_type == 'text':
-                name = (item or {}).get('name', 'attachment.txt')
-                text = (item or {}).get('text', '')
-                user_content.append({'type': 'text', 'text': f"[Attached file: {name}]\n{text}"})
+            item_type = (item or {}).get("type")
+            if item_type == "image":
+                data_url = (item or {}).get("data_url", "")
+                name = (item or {}).get("name", "image.png")
+                mime = (item or {}).get("mime", "image/png")
+                if data_url.startswith("data:image/"):
+                    user_content.append({"type": "image_url", "image_url": {"url": data_url}})
+                    image_entries.append({"name": name, "mime": mime, "data_url": data_url})
+            elif item_type == "text":
+                name = (item or {}).get("name", "attachment.txt")
+                text = (item or {}).get("text", "")
+                if text:
+                    wrapped = f"[Attached file: {name}]\n{text}"
+                    user_content.append({"type": "text", "text": wrapped})
+                    text_entries.append({"name": name, "text": text})
 
-        messages.append({'role': 'user', 'content': user_content})
-        model_for_request = VISION_MODEL if has_image else selected_model
+        messages.append({"role": "user", "content": user_content})
 
+        model_for_request = VISION_MODEL if image_entries else selected_model
         if model_for_request not in MODEL_PRICING:
             return jsonify({"error": f"Model pricing is not configured for {model_for_request}."}), 400
 
         res = client.chat.completions.create(model=model_for_request, messages=messages)
-        answer = res.choices[0].message.content
-
-        pricing = MODEL_PRICING[model_for_request]
-        cost = ((res.usage.prompt_tokens / 1000) * pricing['input']) + ((res.usage.completion_tokens / 1000) * pricing['output'])
+        answer = res.choices[0].message.content or ""
+        usage = getattr(res, "usage", None)
+        prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+        completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+        cost = cost_from_usage(model_for_request, prompt_tokens, completion_tokens)
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -966,24 +1196,60 @@ def ask():
         cursor.close()
         conn.close()
 
+        insert_log(
+            id_code=id_code,
+            log_type="chat",
+            prompt=user_prompt,
+            response=answer,
+            model=model_for_request,
+            cost=cost,
+        )
+
+        # Store uploaded images and their vision analysis separately for admin review.
+        if image_entries:
+            for img in image_entries:
+                analysis_prompt = f"Analyze this uploaded image in context of the user's message: {user_prompt}"
+                analysis_text = answer
+                # Re-run on each uploaded image so each file gets its own admin-visible scan.
+                try:
+                    analysis_text, analysis_cost, analysis_model = analyze_image_with_vision(img["data_url"], analysis_prompt)
+                except Exception:
+                    analysis_cost = 0.0
+                    analysis_model = model_for_request
+                    analysis_text = answer
+
+                insert_log(
+                    id_code=id_code,
+                    log_type="vision_scan",
+                    prompt=user_prompt,
+                    response="",
+                    model=analysis_model,
+                    cost=analysis_cost,
+                    media_name=img["name"],
+                    media_mime=img["mime"],
+                    media_b64=img["data_url"],
+                    analysis=analysis_text,
+                )
+
         return jsonify({
             "answer": answer,
             "spent": new_total[0],
             "cost": cost,
             "credits_used": new_total[0] * 1000,
             "credit_limit": new_total[1],
-            "model_used": model_for_request
+            "model_used": model_for_request,
+            "has_image": bool(image_entries),
         })
     except Exception as e:
         return jsonify({"error": str(e)})
 
 
-@app.route('/generate_image', methods=['POST'])
+@app.route("/generate_image", methods=["POST"])
 def generate_image():
     data = request.json or {}
-    id_code = normalize_id_code(data.get('id_code', ''))
-    prompt = (data.get('prompt') or '').strip()
-    quality = (data.get('quality') or 'low').strip().lower()
+    id_code = normalize_id_code(data.get("id_code", ""))
+    prompt = (data.get("prompt") or "").strip()
+    quality = (data.get("quality") or "low").strip().lower()
 
     if not user_exists(id_code):
         return jsonify({"error": "Unauthorized Access ID"}), 403
@@ -1010,20 +1276,38 @@ def generate_image():
             model=IMAGE_MODEL,
             prompt=prompt,
             quality=quality,
-            size="1024x1024"
+            size="1024x1024",
         )
+
+        image_b64 = res.data[0].b64_json
+
         cursor.execute("UPDATE users SET total_spent = total_spent + %s WHERE id_code = %s", (image_cost, id_code))
         conn.commit()
         cursor.execute("SELECT total_spent, credit_limit FROM users WHERE id_code = %s", (id_code,))
         new_total = cursor.fetchone()
         cursor.close()
         conn.close()
+
+        insert_log(
+            id_code=id_code,
+            log_type="image_generation",
+            prompt=prompt,
+            response="Image generated successfully.",
+            model=IMAGE_MODEL,
+            cost=image_cost,
+            media_name="generated-image.png",
+            media_mime="image/png",
+            media_b64=f"data:image/png;base64,{image_b64}",
+            analysis=f"Generated image at quality: {quality}",
+            quality=quality,
+        )
+
         return jsonify({
-            "image_b64": res.data[0].b64_json,
+            "image_b64": image_b64,
             "spent": new_total[0],
             "credits_used": new_total[0] * 1000,
             "credit_limit": new_total[1],
-            "cost": image_cost
+            "cost": image_cost,
         })
     except Exception as e:
         msg = str(e)
@@ -1041,12 +1325,12 @@ def generate_image():
         return jsonify({"error": msg}), 500
 
 
-@app.route('/generate_code', methods=['POST'])
+@app.route("/generate_code", methods=["POST"])
 def generate_code():
     data = request.json or {}
-    id_code = normalize_id_code(data.get('id_code', ''))
-    prompt = (data.get('prompt') or '').strip()
-    language = (data.get('language') or '').strip()
+    id_code = normalize_id_code(data.get("id_code", ""))
+    prompt = (data.get("prompt") or "").strip()
+    language = (data.get("language") or "").strip()
     model_name = "gpt-5.1-codex-mini"
 
     if not user_exists(id_code):
@@ -1054,17 +1338,16 @@ def generate_code():
     if not prompt:
         return jsonify({"error": "Prompt is empty."}), 400
 
-    full_prompt = f"Language/Stack: {language or 'Not specified'}\\n\\nTask:\\n{prompt}\\n\\nReturn code first, then a short explanation."
+    full_prompt = f"Language/Stack: {language or 'Not specified'}\n\nTask:\n{prompt}\n\nReturn code first, then a short explanation."
     try:
         res = client.responses.create(
             model=model_name,
             input=f"Authenticated user IDN: {id_code}\n\n{full_prompt}"
         )
         code_answer = res.output_text
-        pricing = MODEL_PRICING[model_name]
-        input_tokens = getattr(res.usage, "input_tokens", 0) or 0
-        output_tokens = getattr(res.usage, "output_tokens", 0) or 0
-        cost = ((input_tokens / 1000) * pricing['input']) + ((output_tokens / 1000) * pricing['output'])
+        input_tokens = getattr(getattr(res, "usage", None), "input_tokens", 0) or 0
+        output_tokens = getattr(getattr(res, "usage", None), "output_tokens", 0) or 0
+        cost = cost_from_usage(model_name, input_tokens, output_tokens)
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -1084,16 +1367,27 @@ def generate_code():
         new_total = cursor.fetchone()
         cursor.close()
         conn.close()
+
+        insert_log(
+            id_code=id_code,
+            log_type="code",
+            prompt=prompt,
+            response=code_answer,
+            model=model_name,
+            cost=cost,
+            analysis=f"Language: {language or 'Not specified'}",
+        )
+
         return jsonify({
             "code": code_answer,
             "spent": new_total[0],
             "cost": cost,
             "credits_used": new_total[0] * 1000,
-            "credit_limit": new_total[1]
+            "credit_limit": new_total[1],
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
