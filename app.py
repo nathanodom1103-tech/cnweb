@@ -308,105 +308,888 @@ def is_allowed_image_mime(mime_type):
 BASE_STYLE = """
 :root {
     color-scheme: light;
-    --bg: #f3f6fb;
-    --card: #ffffff;
-    --border: #d8e1ef;
+    --bg: #eef2ff;
+    --bg-2: #f8fafc;
+    --card: rgba(255,255,255,.82);
+    --card-solid: #ffffff;
+    --panel: #ffffff;
+    --panel-2: #f8fafc;
+    --border: #d7e0ee;
+    --border-strong: #c5d1e3;
     --primary: #2563eb;
     --primary-2: #1d4ed8;
-    --muted: #667085;
+    --primary-soft: rgba(37, 99, 235, .12);
+    --muted: #64748b;
     --text: #0f172a;
+    --subtle-text: #475569;
+    --shadow: 0 18px 45px rgba(15, 23, 42, .10);
+    --shadow-soft: 0 10px 26px rgba(15, 23, 42, .08);
+    --user: #e9f2ff;
+    --assistant: #f8fafc;
+    --user-border: #cfe0ff;
+    --assistant-border: #e2e8f0;
+    --radius-xl: 24px;
+    --radius-lg: 18px;
+    --radius-md: 14px;
+    --radius-sm: 10px;
+    --app-pad: 18px;
+    --chat-pad: 16px;
+    --control-gap: 12px;
+    --panel-width: 360px;
+    --composer-pad: 14px;
+    --base-font: 16px;
+    --line-height: 1.5;
 }
-* { box-sizing: border-box; }
-body { font-family: Inter, system-ui, sans-serif; margin: 0; background: radial-gradient(1200px 600px at 20% -10%, #dbeafe 0%, transparent 40%), var(--bg); color: var(--text); }
-.glass { background: rgba(255,255,255,.9); backdrop-filter: blur(6px); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08); }
-.btn { padding: 11px 14px; border: 0; border-radius: 10px; cursor: pointer; font-weight: 700; background: linear-gradient(180deg, var(--primary), var(--primary-2)); color: #fff; }
-.btn.secondary { background: #475467; }
-.btn.danger { background: #dc2626; }
-input, textarea, select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: #fff; color: var(--text); }
-.muted { color: var(--muted); }
-table { width: 100%; border-collapse: collapse; }
-th, td { border-bottom: 1px solid #e5e7eb; padding: 10px; vertical-align: top; text-align: left; }
-th { background: #f8fafc; }
-small { color: var(--muted); }
-"""
 
+html[data-theme="light"] {
+    color-scheme: light;
+}
+
+html[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0b1220;
+    --bg-2: #111827;
+    --card: rgba(15, 23, 42, .82);
+    --card-solid: #0f172a;
+    --panel: #0f172a;
+    --panel-2: #111827;
+    --border: #223049;
+    --border-strong: #31415f;
+    --primary: #60a5fa;
+    --primary-2: #3b82f6;
+    --primary-soft: rgba(96, 165, 250, .14);
+    --muted: #94a3b8;
+    --text: #e5e7eb;
+    --subtle-text: #cbd5e1;
+    --shadow: 0 20px 50px rgba(0, 0, 0, .35);
+    --shadow-soft: 0 12px 28px rgba(0, 0, 0, .24);
+    --user: rgba(96, 165, 250, .16);
+    --assistant: rgba(148, 163, 184, .12);
+    --user-border: rgba(96, 165, 250, .28);
+    --assistant-border: rgba(148, 163, 184, .18);
+}
+
+html[data-theme="midnight"] {
+    color-scheme: dark;
+    --bg: #090b16;
+    --bg-2: #121528;
+    --card: rgba(11, 15, 27, .86);
+    --card-solid: #0b0f1b;
+    --panel: #0b0f1b;
+    --panel-2: #11172a;
+    --border: #20263b;
+    --border-strong: #2d3550;
+    --primary: #a78bfa;
+    --primary-2: #8b5cf6;
+    --primary-soft: rgba(167, 139, 250, .16);
+    --muted: #9aa3b2;
+    --text: #eef2ff;
+    --subtle-text: #c9d2e3;
+    --shadow: 0 24px 55px rgba(0, 0, 0, .45);
+    --shadow-soft: 0 14px 32px rgba(0, 0, 0, .28);
+    --user: rgba(167, 139, 250, .16);
+    --assistant: rgba(148, 163, 184, .10);
+    --user-border: rgba(167, 139, 250, .24);
+    --assistant-border: rgba(148, 163, 184, .18);
+}
+
+html[data-theme="emerald"] {
+    color-scheme: light;
+    --primary: #10b981;
+    --primary-2: #059669;
+    --primary-soft: rgba(16, 185, 129, .13);
+}
+
+html[data-theme="rose"] {
+    color-scheme: light;
+    --primary: #f43f5e;
+    --primary-2: #e11d48;
+    --primary-soft: rgba(244, 63, 94, .13);
+}
+
+html[data-theme="slate"] {
+    color-scheme: dark;
+    --bg: #0f172a;
+    --bg-2: #111827;
+    --card: rgba(15, 23, 42, .84);
+    --card-solid: #0f172a;
+    --panel: #0f172a;
+    --panel-2: #111827;
+    --border: #243246;
+    --border-strong: #334155;
+    --primary: #38bdf8;
+    --primary-2: #0ea5e9;
+    --primary-soft: rgba(56, 189, 248, .14);
+    --muted: #94a3b8;
+    --text: #e5e7eb;
+    --subtle-text: #cbd5e1;
+    --shadow: 0 20px 50px rgba(0, 0, 0, .28);
+    --shadow-soft: 0 12px 28px rgba(0, 0, 0, .22);
+    --user: rgba(56, 189, 248, .13);
+    --assistant: rgba(148, 163, 184, .10);
+    --user-border: rgba(56, 189, 248, .24);
+    --assistant-border: rgba(148, 163, 184, .18);
+}
+
+html[data-density="compact"] {
+    --app-pad: 12px;
+    --chat-pad: 12px;
+    --control-gap: 8px;
+    --panel-width: 332px;
+    --composer-pad: 10px;
+    --base-font: 15px;
+}
+
+html[data-density="comfortable"] {
+    --app-pad: 18px;
+    --chat-pad: 16px;
+    --control-gap: 12px;
+    --panel-width: 360px;
+    --composer-pad: 14px;
+    --base-font: 16px;
+}
+
+html[data-density="spacious"] {
+    --app-pad: 22px;
+    --chat-pad: 18px;
+    --control-gap: 14px;
+    --panel-width: 392px;
+    --composer-pad: 16px;
+    --base-font: 17px;
+}
+
+html[data-radius="soft"] {
+    --radius-xl: 24px;
+    --radius-lg: 18px;
+    --radius-md: 14px;
+    --radius-sm: 10px;
+}
+
+html[data-radius="rounded"] {
+    --radius-xl: 30px;
+    --radius-lg: 22px;
+    --radius-md: 16px;
+    --radius-sm: 12px;
+}
+
+html[data-radius="square"] {
+    --radius-xl: 14px;
+    --radius-lg: 12px;
+    --radius-md: 10px;
+    --radius-sm: 8px;
+}
+
+html[data-text="small"] { --base-font: 15px; }
+html[data-text="medium"] { --base-font: 16px; }
+html[data-text="large"] { --base-font: 17px; }
+
+html[data-motion="reduced"] *,
+html[data-motion="reduced"] *::before,
+html[data-motion="reduced"] *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    min-height: 100%;
+}
+
+body {
+    min-height: 100vh;
+    overflow: hidden;
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: var(--base-font);
+    line-height: var(--line-height);
+    color: var(--text);
+    background:
+        radial-gradient(1100px 650px at 12% -8%, rgba(37, 99, 235, .18) 0%, transparent 45%),
+        radial-gradient(900px 600px at 100% 0%, rgba(99, 102, 241, .10) 0%, transparent 40%),
+        linear-gradient(135deg, var(--bg), var(--bg-2));
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: .24;
+    mask-image: radial-gradient(circle at center, black 25%, transparent 100%);
+}
+
+a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+a:hover { text-decoration: underline; }
+
+small { color: var(--muted); }
+
+.glass {
+    background: var(--card);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow);
+}
+
+.btn {
+    padding: 11px 15px;
+    border: 0;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 700;
+    letter-spacing: .01em;
+    background: linear-gradient(180deg, var(--primary), var(--primary-2));
+    color: white;
+    box-shadow: 0 8px 18px var(--primary-soft);
+    transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+
+.btn:hover { transform: translateY(-1px); filter: brightness(1.03); }
+.btn:active { transform: translateY(0); filter: brightness(.98); }
+
+.btn.secondary {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: none;
+}
+
+.btn.danger {
+    background: linear-gradient(180deg, #ef4444, #dc2626);
+}
+
+.btn.ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: none;
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--card-solid);
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+label {
+    font-size: .92rem;
+    color: var(--subtle-text);
+    font-weight: 600;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    border-bottom: 1px solid var(--border);
+    padding: 10px;
+    vertical-align: top;
+    text-align: left;
+}
+
+th {
+    background: var(--panel-2);
+    color: var(--text);
+}
+
+.scrollbar::-webkit-scrollbar,
+.chat::-webkit-scrollbar,
+.panel::-webkit-scrollbar {
+    width: 12px;
+}
+
+.scrollbar::-webkit-scrollbar-thumb,
+.chat::-webkit-scrollbar-thumb,
+.panel::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, .35);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+}
+
+.scrollbar::-webkit-scrollbar-track,
+.chat::-webkit-scrollbar-track,
+.panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--primary-soft);
+    color: var(--primary);
+    border: 1px solid rgba(127, 141, 170, .16);
+}
+
+.kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    padding: 1px 7px;
+    border: 1px solid var(--border);
+    border-bottom-color: var(--border-strong);
+    border-radius: 8px;
+    background: var(--panel-2);
+    color: var(--subtle-text);
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 1px 0 rgba(255,255,255,.25) inset;
+}
+"""
 
 CHAT_TEMPLATE = """
 <!DOCTYPE html>
-<html>
+<html lang="en" data-theme="system" data-density="comfortable" data-radius="soft" data-text="medium" data-motion="on">
 <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>N Tech AI 2.4</title>
     <style>
         """ + BASE_STYLE + """
-        :root { --user: #e9f2ff; --assistant: #f8fafc; }
-        body { height: 100vh; overflow: hidden; }
-        .card { height: 100vh; display:flex; flex-direction:column; background: var(--card); padding: 18px; }
-        .topbar { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px; }
-        .row { display:flex; justify-content:space-between; align-items:center; gap:10px; }
-        .chat { flex:1; background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px; margin-top:12px; overflow-y:auto; }
-        .msg { padding:10px 12px; border-radius:10px; margin-bottom:10px; white-space:pre-wrap; }
-        .msg.user { background: var(--user); }
-        .msg.assistant { background: var(--assistant); }
-        .controls { display:grid; grid-template-columns:1fr; gap:10px; margin:12px 0; }
-        textarea { min-height: 70px; resize: vertical; }
-        .composer { margin-top:12px; border-top:1px solid var(--border); padding-top:12px; }
-        .prompt-row { display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:end; }
-        .panel { position:fixed; right:-360px; top:0; width:340px; height:100vh; background:#fff; border-left:1px solid var(--border); padding:16px; transition:right .2s ease; z-index:10001; overflow:auto; box-shadow:-8px 0 24px rgba(2,6,23,.12); }
-        .panel.open { right:0; }
-        .panel-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-        .intro { position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; z-index:9999; animation:introFadeOut 1s ease 1.8s forwards; }
-        .intro .logo { font-size:min(36vw, 300px); font-weight:900; color:white; line-height:1; opacity:0; transform:scale(0.92); animation:nReveal 1.1s ease forwards; }
-        .pill { display:inline-block; background:#eef2ff; color:#1e3a8a; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; }
-        .preview { max-width:120px; max-height:120px; border-radius:10px; border:1px solid var(--border); display:block; margin-top:8px; }
-        @keyframes nReveal { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
-        @keyframes introFadeOut { from { opacity:1; visibility:visible; } to { opacity:0; visibility:hidden; } }
+        body { height: 100vh; }
+
+        .app {
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0;
+            padding: var(--app-pad);
+        }
+
+        .card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: var(--control-gap);
+            padding: var(--app-pad);
+            overflow: hidden;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            padding-bottom: 8px;
+        }
+
+        .topbar h2 {
+            margin: 0;
+            font-size: clamp(1.3rem, 2vw, 1.7rem);
+            letter-spacing: -.02em;
+        }
+
+        .subtitle {
+            margin-top: 6px;
+            color: var(--muted);
+            max-width: 860px;
+            font-size: .95rem;
+        }
+
+        .chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .chat-shell {
+            display: grid;
+            grid-template-rows: 1fr auto;
+            gap: var(--control-gap);
+            min-height: 0;
+            flex: 1;
+        }
+
+        .chat {
+            background:
+                radial-gradient(700px 220px at 10% 0%, rgba(255,255,255,.55), transparent 45%),
+                linear-gradient(180deg, var(--panel), var(--panel-2));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: var(--chat-pad);
+            overflow-y: auto;
+            min-height: 0;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .empty-state {
+            display: grid;
+            place-items: center;
+            text-align: center;
+            height: 100%;
+            color: var(--muted);
+            padding: 24px;
+        }
+
+        .empty-card {
+            max-width: 520px;
+            padding: 28px;
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,.22);
+        }
+
+        .empty-card h3 {
+            margin: 0 0 8px 0;
+            color: var(--text);
+            font-size: 1.15rem;
+        }
+
+        .messages {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            max-width: min(90%, 920px);
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            flex: 0 0 auto;
+            display: grid;
+            place-items: center;
+            font-size: 15px;
+            font-weight: 800;
+            color: white;
+            background: linear-gradient(180deg, var(--primary), var(--primary-2));
+            box-shadow: 0 8px 18px var(--primary-soft);
+        }
+
+        .avatar.assistant {
+            background: linear-gradient(180deg, #64748b, #475569);
+            box-shadow: none;
+        }
+
+        .bubble-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .bubble {
+            padding: 12px 14px;
+            border-radius: var(--radius-lg);
+            white-space: pre-wrap;
+            word-break: break-word;
+            border: 1px solid var(--assistant-border);
+            background: var(--assistant);
+            box-shadow: 0 8px 16px rgba(15, 23, 42, .05);
+        }
+
+        .message.user .bubble {
+            background: var(--user);
+            border-color: var(--user-border);
+        }
+
+        .meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--muted);
+            padding: 0 2px;
+        }
+
+        .message.user .meta {
+            justify-content: flex-end;
+        }
+
+        .attachments {
+            display: grid;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .preview {
+            max-width: 180px;
+            max-height: 180px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            display: block;
+            object-fit: cover;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .composer {
+            border: 1px solid var(--border);
+            background: var(--card);
+            border-radius: var(--radius-xl);
+            padding: var(--composer-pad);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .composer-grid {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .textarea-wrap {
+            display: grid;
+            gap: 8px;
+        }
+
+        textarea {
+            min-height: 92px;
+            resize: vertical;
+            line-height: 1.45;
+        }
+
+        .composer-tools {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        .stat {
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: var(--panel-2);
+        }
+
+        .stat .label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+        }
+
+        .stat .value {
+            margin-top: 6px;
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .panel {
+            position: fixed;
+            right: calc(-1 * var(--panel-width));
+            top: 0;
+            width: var(--panel-width);
+            height: 100vh;
+            background: var(--panel);
+            border-left: 1px solid var(--border);
+            padding: 16px;
+            transition: right .22s ease;
+            z-index: 10001;
+            overflow: auto;
+            box-shadow: -18px 0 34px rgba(2, 6, 23, .18);
+        }
+
+        .panel.open {
+            right: 0;
+        }
+
+        .panel-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .panel h3 {
+            margin: 0;
+            font-size: 1.05rem;
+        }
+
+        .panel-section {
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: var(--panel-2);
+            margin-top: 12px;
+        }
+
+        .panel-section h4 {
+            margin: 0 0 10px 0;
+            font-size: .93rem;
+            color: var(--text);
+        }
+
+        .settings-grid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .settings-grid.two {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 0;
+        }
+
+        .toggle-row input[type="checkbox"] {
+            width: auto;
+            transform: scale(1.05);
+        }
+
+        .intro {
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at center, rgba(255,255,255,.12), transparent 34%),
+                #050816;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: introFadeOut 1s ease 1.9s forwards;
+        }
+
+        .intro .logo {
+            font-size: min(34vw, 300px);
+            font-weight: 900;
+            color: white;
+            line-height: 1;
+            opacity: 0;
+            transform: scale(.92);
+            letter-spacing: -.06em;
+            animation: nReveal 1.05s ease forwards;
+            text-shadow: 0 18px 60px rgba(0,0,0,.45);
+        }
+
+        @keyframes nReveal {
+            from { opacity: 0; transform: scale(.92); filter: blur(8px); }
+            to { opacity: 1; transform: scale(1); filter: blur(0); }
+        }
+
+        @keyframes introFadeOut {
+            from { opacity: 1; visibility: visible; }
+            to { opacity: 0; visibility: hidden; }
+        }
+
+        .muted { color: var(--muted); }
+        .small-note { font-size: .88rem; color: var(--muted); }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            background: var(--primary);
+            box-shadow: 0 0 0 4px var(--primary-soft);
+        }
+
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .link-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .link-card {
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: var(--card-solid);
+        }
+
+        .link-card:hover {
+            border-color: var(--primary);
+            text-decoration: none;
+            box-shadow: 0 0 0 4px var(--primary-soft);
+        }
+
+        .credits {
+            display: grid;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .bar {
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            overflow: hidden;
+            background: rgba(148, 163, 184, .18);
+            border: 1px solid var(--border);
+        }
+
+        .bar > div {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2));
+            transition: width .2s ease;
+        }
+
+        @media (max-width: 980px) {
+            body { overflow: auto; }
+            .app { padding: 10px; }
+            .stats { grid-template-columns: 1fr; }
+            .message { max-width: 96%; }
+            .panel {
+                width: min(100vw, 400px);
+                right: calc(-1 * min(100vw, 400px));
+            }
+        }
+
+        @media (max-width: 760px) {
+            .topbar { flex-direction: column; align-items: stretch; }
+            .top-actions { justify-content: flex-start; }
+            .composer-grid { grid-template-columns: 1fr; }
+            .message { max-width: 100%; }
+            .panel { width: 100vw; right: -100vw; }
+        }
     </style>
 </head>
 <body>
-    <div class="intro" id="introSplash"><div class="logo">N Tech AI</div></div>
-    <div class="card glass">
-        <div class="topbar">
-            <div>
-                <h2 style="margin:0;">N Tech AI 2.4</h2>
-                <div class="muted">2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. N Tech AI Art competition submissions is almost closed! Images used to cost 20 credits (almost 2 cents!) per image (On basic), which we fixed, now only costing 9 credits (On basic) and 35 (on smart). N Code is fixed! 2.2 Ultra is out, and it is probably our best model yet! try it by clicking the settings to change models. N TECH AI FOUND ILLEGAL BEHAVIOUR AT 11:39 AM 5/19/26 and 5/21/26 around noon. If you know something, please tell the N Tech Staff. N Tech AI 2026. 2.4 is out!!! New features include: better photo scanning, enhanced image generation, and more!</div>
-            </div>
-            <div><button class="btn" style="width:auto;" onclick="toggleSettings()">Settings</button></div>
-        </div>
+    <div class="intro" id="introSplash">
+        <div class="logo">N Tech AI</div>
+    </div>
 
-        <div class="chat" id="chatHistory"></div>
+    <div class="app">
+        <div class="card glass">
+            <div class="topbar">
+                <div>
+                    <h2>N Tech AI 2.4</h2>
+                    <div class="subtitle">
+                        A cleaner workspace for chat, files, and vision. Style controls live in Settings, and the interface can follow your preferred theme, density, and motion settings.
+                    </div>
+                    <div class="chip-row">
+                        <span class="pill"><span class="status-dot"></span> Live Chat</span>
+                        <span class="pill">Memory: <span id="memoryChip">On</span></span>
+                        <span class="pill">Model: <span id="modelChip">gpt-4o-mini</span></span>
+                        <span class="pill">Theme: <span id="themeChip">System</span></span>
+                    </div>
+                </div>
+                <div class="top-actions">
+                    <button class="btn ghost" onclick="toggleSettings()">Settings</button>
+                    <button class="btn secondary" onclick="clearHistory()">Clear chat</button>
+                </div>
+            </div>
 
-        <div class="composer">
-            <div class="row">
-                <label style="display:flex;align-items:center;gap:8px;">
-                    <input type="checkbox" id="memoryToggle" checked style="width:auto;">
-                    Remember previous outputs for context
-                </label>
-                <button class="btn secondary" style="width:auto;" onclick="clearHistory()">Clear chat</button>
+            <div class="stats">
+                <div class="stat">
+                    <div class="label">Session spent</div>
+                    <div class="value">$<span id="totalDisplay">0.000000</span></div>
+                </div>
+                <div class="stat">
+                    <div class="label">Credits used</div>
+                    <div class="value"><span id="creditsUsed">0.00</span><span id="creditLimitText"></span></div>
+                </div>
+                <div class="stat">
+                    <div class="label">Status</div>
+                    <div class="value" id="status">Ready</div>
+                </div>
             </div>
-            <input id="fileInput" type="file" multiple style="margin:10px 0;" />
-            <div class="prompt-row">
-                <textarea id="userInput" placeholder="Ask anything..."></textarea>
-                <button class="btn" style="width:auto;" onclick="askAI()">Send to AI</button>
+
+            <div class="chat-shell">
+                <div class="chat scrollbar" id="chatHistory"></div>
+
+                <div class="composer">
+                    <div class="row">
+                        <label style="display:flex;align-items:center;gap:8px;">
+                            <input type="checkbox" id="memoryToggle" checked style="width:auto;">
+                            Remember previous outputs for context
+                        </label>
+                        <div class="small-note">
+                            Send: <span class="kbd">Enter</span> • New line: <span class="kbd">Shift</span> + <span class="kbd">Enter</span>
+                        </div>
+                    </div>
+
+                    <div class="composer-tools">
+                        <input id="fileInput" type="file" multiple />
+                    </div>
+
+                    <div class="composer-grid">
+                        <div class="textarea-wrap">
+                            <textarea id="userInput" placeholder="Ask anything..."></textarea>
+                        </div>
+                        <button class="btn" style="width:auto;" onclick="askAI()">Send to AI</button>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="row" style="margin-top:10px;">
-            <div class="muted">Session Spent: $<span id="totalDisplay">0.000000</span></div>
-            <div class="muted" id="status">Ready</div>
-        </div>
-        <div class="muted" style="margin-top:8px;">Credits Used: <span id="creditsUsed">0.00</span><span id="creditLimitText"></span></div>
-        <div style="margin-top:6px;background:#e5e7eb;border-radius:9999px;height:10px;overflow:hidden;">
-            <div id="creditsBar" style="height:10px;width:0%;background:#2563eb;"></div>
         </div>
     </div>
 
-    <aside class="panel" id="settingsPanel">
+    <aside class="panel scrollbar" id="settingsPanel">
         <div class="panel-head">
-            <h3 style="margin:0;">Settings</h3>
+            <h3>Settings</h3>
             <button class="btn secondary" style="width:auto;padding:6px 10px;" onclick="toggleSettings()">Close</button>
         </div>
-        <div class="muted">Signed in as: {{ idn }}</div>
-        <div style="margin-top:10px;">
-            <label>Model</label>
+
+        <div class="small-note">Signed in as: {{ idn }}</div>
+
+        <div class="panel-section">
+            <h4>Model</h4>
             <select id="panelModel">
                 <option value="gpt-4o-mini">N Tech 1.7 Basic</option>
                 <option value="gpt-4.1-nano">N Tech 1.7 Smart</option>
@@ -421,48 +1204,273 @@ CHAT_TEMPLATE = """
                 <option value="gpt-5.4-nano">N Tech AI 2.3 Smart</option>
             </select>
         </div>
-        <label style="display:flex;align-items:center;gap:8px;margin-top:12px;">
-            <input type="checkbox" id="panelMemory" checked onchange="document.getElementById('memoryToggle').checked=this.checked;" style="width:auto;">
-            Remember previous outputs
-        </label>
-        <div style="margin-top:14px;display:grid;gap:8px;">
-            <a href="/image">Open Image Generator</a>
-            <a href="/code">Open N-Code</a>
-            {% if is_admin %}<a href="/dashboard">Open Admin Dashboard</a>{% endif %}
-            <a href="/logout">Sign out</a>
+
+        <div class="panel-section">
+            <h4>Appearance</h4>
+            <div class="settings-grid">
+                <div>
+                    <label>Theme</label>
+                    <select id="themeSelect">
+                        <option value="system">System</option>
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                        <option value="midnight">Midnight</option>
+                        <option value="slate">Slate</option>
+                        <option value="emerald">Emerald</option>
+                        <option value="rose">Rose</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label>Accent</label>
+                    <select id="accentSelect">
+                        <option value="blue">Blue</option>
+                        <option value="violet">Violet</option>
+                        <option value="emerald">Emerald</option>
+                        <option value="rose">Rose</option>
+                        <option value="amber">Amber</option>
+                        <option value="cyan">Cyan</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label>Density</label>
+                    <select id="densitySelect">
+                        <option value="compact">Compact</option>
+                        <option value="comfortable">Comfortable</option>
+                        <option value="spacious">Spacious</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label>Corner style</label>
+                    <select id="radiusSelect">
+                        <option value="soft">Soft</option>
+                        <option value="rounded">Rounded</option>
+                        <option value="square">Square</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label>Text size</label>
+                    <select id="textSelect">
+                        <option value="small">Small</option>
+                        <option value="medium">Medium</option>
+                        <option value="large">Large</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label>Motion</label>
+                    <select id="motionSelect">
+                        <option value="on">On</option>
+                        <option value="reduced">Reduced</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="toggle-row">
+                <div>
+                    <div style="font-weight:700;">Show message timestamps</div>
+                    <div class="small-note">Display a time label for each message bubble.</div>
+                </div>
+                <input type="checkbox" id="timestampToggle" checked />
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h4>Memory & tools</h4>
+            <div class="toggle-row">
+                <div>
+                    <div style="font-weight:700;">Remember previous outputs</div>
+                    <div class="small-note">Keeps chat history in the request context.</div>
+                </div>
+                <input type="checkbox" id="panelMemory" checked />
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h4>Shortcuts</h4>
+            <div class="link-list">
+                <a class="link-card" href="/image">Open Image Generator</a>
+                <a class="link-card" href="/code">Open N-Code</a>
+                {% if is_admin %}<a class="link-card" href="/dashboard">Open Admin Dashboard</a>{% endif %}
+                <a class="link-card" href="/logout">Sign out</a>
+            </div>
         </div>
     </aside>
 
     <script>
         let messages = [];
+        const UI_KEY = "ntai-ui-v2";
+
+        const ACCENTS = {
+            blue:   { primary: "#2563eb", primary2: "#1d4ed8" },
+            violet: { primary: "#7c3aed", primary2: "#6d28d9" },
+            emerald:{ primary: "#10b981", primary2: "#059669" },
+            rose:   { primary: "#f43f5e", primary2: "#e11d48" },
+            amber:  { primary: "#f59e0b", primary2: "#d97706" },
+            cyan:   { primary: "#06b6d4", primary2: "#0891b2" }
+        };
+
+        const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+        function defaultPrefs() {
+            return {
+                theme: "system",
+                accent: "blue",
+                density: "comfortable",
+                radius: "soft",
+                text: "medium",
+                motion: "on",
+                timestamps: true
+            };
+        }
+
+        function loadPrefs() {
+            try {
+                return { ...defaultPrefs(), ...(JSON.parse(localStorage.getItem(UI_KEY)) || {}) };
+            } catch {
+                return defaultPrefs();
+            }
+        }
+
+        function savePrefs(prefs) {
+            localStorage.setItem(UI_KEY, JSON.stringify(prefs));
+        }
+
+        function getCurrentThemeValue(themeChoice) {
+            if (themeChoice !== "system") return themeChoice;
+            return systemThemeQuery.matches ? "dark" : "light";
+        }
+
+        function applyPrefs(prefs) {
+            const themeValue = getCurrentThemeValue(prefs.theme);
+            const root = document.documentElement;
+
+            root.dataset.theme = themeValue;
+            root.dataset.density = prefs.density || "comfortable";
+            root.dataset.radius = prefs.radius || "soft";
+            root.dataset.text = prefs.text || "medium";
+            root.dataset.motion = prefs.motion || "on";
+
+            const accent = ACCENTS[prefs.accent] || ACCENTS.blue;
+            root.style.setProperty("--primary", accent.primary);
+            root.style.setProperty("--primary-2", accent.primary2);
+            root.style.setProperty("--primary-soft", `${accent.primary}1f`);
+
+            document.getElementById("themeChip").innerText = prefs.theme === "system"
+                ? `System (${themeValue})`
+                : prefs.theme.charAt(0).toUpperCase() + prefs.theme.slice(1);
+
+            document.getElementById("memoryChip").innerText = prefs.memory ? "On" : "Off";
+            document.getElementById("modelChip").innerText = document.getElementById("panelModel").value || "gpt-4o-mini";
+        }
+
+        function setSelectValue(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.value = value;
+        }
+
+        function syncUiFromPrefs(prefs) {
+            setSelectValue("themeSelect", prefs.theme);
+            setSelectValue("accentSelect", prefs.accent);
+            setSelectValue("densitySelect", prefs.density);
+            setSelectValue("radiusSelect", prefs.radius);
+            setSelectValue("textSelect", prefs.text);
+            setSelectValue("motionSelect", prefs.motion);
+            document.getElementById("timestampToggle").checked = !!prefs.timestamps;
+            document.getElementById("memoryToggle").checked = !!prefs.memory;
+            document.getElementById("panelMemory").checked = !!prefs.memory;
+        }
+
+        function readPrefsFromUi() {
+            return {
+                theme: document.getElementById("themeSelect").value,
+                accent: document.getElementById("accentSelect").value,
+                density: document.getElementById("densitySelect").value,
+                radius: document.getElementById("radiusSelect").value,
+                text: document.getElementById("textSelect").value,
+                motion: document.getElementById("motionSelect").value,
+                timestamps: document.getElementById("timestampToggle").checked,
+                memory: document.getElementById("memoryToggle").checked
+            };
+        }
+
+        function persistAndApply() {
+            const prefs = readPrefsFromUi();
+            savePrefs(prefs);
+            applyPrefs(prefs);
+        }
 
         function toggleSettings() {
-            document.getElementById('settingsPanel').classList.toggle('open');
+            document.getElementById("settingsPanel").classList.toggle("open");
         }
 
         function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.innerText = text || '';
+            const div = document.createElement("div");
+            div.innerText = text || "";
             return div.innerHTML;
         }
 
+        function timeLabel(value) {
+            if (!value) return "";
+            return value;
+        }
+
         function renderHistory() {
-            const wrap = document.getElementById('chatHistory');
+            const wrap = document.getElementById("chatHistory");
+
             if (!messages.length) {
-                wrap.innerHTML = '<div class="muted">No messages yet. Start chatting.</div>';
+                wrap.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-card">
+                            <h3>Start a conversation</h3>
+                            <div>Ask a question, upload a file, or switch styles in Settings.</div>
+                        </div>
+                    </div>`;
                 return;
             }
-            wrap.innerHTML = messages.map(m => {
-                const imageHtml = (m.preview ? `<div><small>${escapeHtml(m.preview.label || '')}</small><img class="preview" src="${m.preview.src}" alt="attachment preview"></div>` : '');
-                return `<div class="msg ${m.role}"><strong>${m.role === 'user' ? 'You' : 'AI'}:</strong> ${escapeHtml(m.content)}${imageHtml}</div>`;
-            }).join('');
+
+            const showTimestamps = document.getElementById("timestampToggle").checked;
+
+            wrap.innerHTML = `
+                <div class="messages">
+                    ${messages.map(m => {
+                        const roleIcon = m.role === "user" ? "You" : "AI";
+                        const avatarClass = m.role === "user" ? "avatar" : "avatar assistant";
+                        const previewHtml = Array.isArray(m.previews) && m.previews.length
+                            ? `<div class="attachments">${m.previews.map(p => `
+                                <div>
+                                    <small>${escapeHtml(p.label || "")}</small>
+                                    <img class="preview" src="${p.src}" alt="attachment preview">
+                                </div>
+                            `).join("")}</div>`
+                            : "";
+                        const metaHtml = showTimestamps
+                            ? `<div class="meta"><span>${roleIcon}</span><span>•</span><span>${escapeHtml(timeLabel(m.time || ""))}</span></div>`
+                            : `<div class="meta"><span>${roleIcon}</span></div>`;
+
+                        return `
+                            <div class="message ${m.role}">
+                                <div class="${avatarClass}">${m.role === "user" ? "Y" : "A"}</div>
+                                <div class="bubble-wrap">
+                                    <div class="bubble">${escapeHtml(m.content)}${previewHtml}</div>
+                                    ${metaHtml}
+                                </div>
+                            </div>
+                        `;
+                    }).join("")}
+                </div>
+            `;
             wrap.scrollTop = wrap.scrollHeight;
         }
 
         function clearHistory() {
+            if (!confirm("Clear the current chat?")) return;
             messages = [];
             renderHistory();
-            document.getElementById('status').innerText = 'Chat cleared';
+            document.getElementById("status").innerText = "Chat cleared";
         }
 
         async function fileToDataUrl(file) {
@@ -474,97 +1482,178 @@ CHAT_TEMPLATE = """
             });
         }
 
+        function nowLabel() {
+            return new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        }
+
+        function updateUiChips() {
+            document.getElementById("memoryChip").innerText = document.getElementById("memoryToggle").checked ? "On" : "Off";
+            document.getElementById("modelChip").innerText = document.getElementById("panelModel").value || "gpt-4o-mini";
+            const prefs = loadPrefs();
+            document.getElementById("themeChip").innerText = prefs.theme === "system"
+                ? `System (${getCurrentThemeValue("system")})`
+                : prefs.theme.charAt(0).toUpperCase() + prefs.theme.slice(1);
+        }
+
         async function askAI() {
             const id = {{ idn|tojson }};
-            const prompt = document.getElementById('userInput').value.trim();
-            const model = document.getElementById('panelModel').value;
-            const memory = document.getElementById('memoryToggle').checked;
-            const files = document.getElementById('fileInput').files;
-            const status = document.getElementById('status');
+            const prompt = document.getElementById("userInput").value.trim();
+            const model = document.getElementById("panelModel").value;
+            const memory = document.getElementById("memoryToggle").checked;
+            const files = document.getElementById("fileInput").files;
+            const status = document.getElementById("status");
 
             if (!prompt) {
-                alert('Please enter a message.');
+                alert("Please enter a message.");
                 return;
             }
 
             const attachments = [];
             if (files && files.length) {
                 for (const f of files) {
-                    if ((f.type || '').startsWith('image/')) {
+                    if ((f.type || "").startsWith("image/")) {
                         const dataUrl = await fileToDataUrl(f);
-                        attachments.push({type: 'image', name: f.name, mime: f.type, data_url: dataUrl});
+                        attachments.push({ type: "image", name: f.name, mime: f.type, data_url: dataUrl });
                     } else {
                         const text = await f.text();
-                        attachments.push({type: 'text', name: f.name, text: text.slice(0, 12000)});
+                        attachments.push({ type: "text", name: f.name, text: text.slice(0, 12000) });
                     }
                 }
             }
 
             const previews = attachments
-                .filter(a => a.type === 'image')
-                .map(a => ({label: a.name, src: a.data_url}));
+                .filter(a => a.type === "image")
+                .map(a => ({ label: a.name, src: a.data_url }));
 
-            messages.push({role: 'user', content: prompt, preview: previews[0] || null});
+            messages.push({
+                role: "user",
+                content: prompt,
+                previews: previews,
+                time: nowLabel()
+            });
             renderHistory();
-            document.getElementById('userInput').value = '';
-            document.getElementById('fileInput').value = '';
-            status.innerText = 'Processing...';
+
+            document.getElementById("userInput").value = "";
+            document.getElementById("fileInput").value = "";
+            status.innerText = "Processing...";
 
             try {
-                const response = await fetch('/ask', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                const response = await fetch("/ask", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         id_code: id,
                         prompt: prompt,
                         model: model,
                         memory: memory,
-                        history: memory ? messages.slice(0, -1).map(m => ({role: m.role, content: m.content})) : [],
+                        history: memory ? messages.slice(0, -1).map(m => ({ role: m.role, content: m.content })) : [],
                         attachments: attachments
                     })
                 });
 
                 const data = await response.json();
+
                 if (data.error) {
-                    messages.push({role: 'assistant', content: 'Error: ' + data.error});
-                    status.innerText = 'Error';
+                    messages.push({ role: "assistant", content: "Error: " + data.error, time: nowLabel() });
+                    status.innerText = "Error";
                 } else {
-                    messages.push({role: 'assistant', content: data.answer || ''});
-                    document.getElementById('totalDisplay').innerText = Number(data.spent || 0).toFixed(6);
+                    messages.push({ role: "assistant", content: data.answer || "", time: nowLabel() });
+
+                    document.getElementById("totalDisplay").innerText = Number(data.spent || 0).toFixed(6);
                     const used = Number(data.credits_used || 0);
                     const limit = data.credit_limit;
-                    document.getElementById('creditsUsed').innerText = used.toFixed(2);
-                    const limitText = document.getElementById('creditLimitText');
-                    const bar = document.getElementById('creditsBar');
+                    document.getElementById("creditsUsed").innerText = used.toFixed(2);
+
+                    const limitText = document.getElementById("creditLimitText");
+                    const bar = document.getElementById("creditsBar");
+
                     if (limit !== null && limit !== undefined) {
                         limitText.innerText = ` / ${Number(limit).toFixed(2)}`;
-                        bar.style.width = `${Math.min((used / Number(limit)) * 100, 100)}%`;
+                        const pct = Math.min((used / Number(limit)) * 100, 100);
+                        bar.style.width = `${pct}%`;
                     } else {
-                        limitText.innerText = '';
+                        limitText.innerText = "";
                         bar.style.width = `${Math.min(used, 100)}%`;
                     }
-                    status.innerText = data.has_image ? 'Replied (vision scan on)' : 'Replied';
+
+                    status.innerText = data.has_image ? "Replied (vision scan on)" : "Replied";
                 }
+
                 renderHistory();
+                updateUiChips();
             } catch (e) {
-                messages.push({role: 'assistant', content: 'Connection failed.'});
+                messages.push({ role: "assistant", content: "Connection failed.", time: nowLabel() });
                 renderHistory();
-                status.innerText = 'Connection failed';
+                status.innerText = "Connection failed";
             }
         }
 
+        function initSettings() {
+            const saved = loadPrefs();
+            syncUiFromPrefs(saved);
+            applyPrefs(saved);
+            updateUiChips();
+
+            document.getElementById("panelModel").addEventListener("change", updateUiChips);
+            document.getElementById("memoryToggle").addEventListener("change", () => {
+                document.getElementById("panelMemory").checked = document.getElementById("memoryToggle").checked;
+                updateUiChips();
+                persistAndApply();
+            });
+
+            document.getElementById("panelMemory").addEventListener("change", () => {
+                document.getElementById("memoryToggle").checked = document.getElementById("panelMemory").checked;
+                updateUiChips();
+                persistAndApply();
+            });
+
+            [
+                "themeSelect",
+                "accentSelect",
+                "densitySelect",
+                "radiusSelect",
+                "textSelect",
+                "motionSelect",
+                "timestampToggle"
+            ].forEach(id => {
+                document.getElementById(id).addEventListener("change", () => {
+                    persistAndApply();
+                    updateUiChips();
+                    renderHistory();
+                });
+            });
+
+            if (systemThemeQuery.addEventListener) {
+                systemThemeQuery.addEventListener("change", () => {
+                    const prefs = loadPrefs();
+                    if (prefs.theme === "system") applyPrefs(prefs);
+                    updateUiChips();
+                });
+            }
+        }
+
+        document.getElementById("userInput").addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                askAI();
+            }
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") document.getElementById("settingsPanel").classList.remove("open");
+        });
+
+        initSettings();
         renderHistory();
-        document.getElementById('panelModel').value = 'gpt-4o-mini';
-        document.getElementById('panelMemory').checked = document.getElementById('memoryToggle').checked;
+
         setTimeout(() => {
-            const intro = document.getElementById('introSplash');
+            const intro = document.getElementById("introSplash");
             if (intro) intro.remove();
         }, 3200);
     </script>
 </body>
 </html>
 """
-
 
 LOGIN_TEMPLATE = """
 <!DOCTYPE html>
