@@ -1141,6 +1141,11 @@ CHAT_TEMPLATE = """
                     <div class="label">Session spent</div>
                     <div class="value">$<span id="totalDisplay">0.000000</span></div>
                 </div>
+                <div class="credits">
+                    <div class="bar">
+                        <div id="creditsBar"></div>
+                    </div>
+                </div>
                 <div class="stat">
                     <div class="label">Credits used</div>
                     <div class="value"><span id="creditsUsed">0.00</span><span id="creditLimitText"></span></div>
