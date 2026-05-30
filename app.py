@@ -1565,7 +1565,16 @@ CHAT_TEMPLATE = """
                     document.getElementById("creditsUsed").innerText = used.toFixed(2);
 
                     const limitText = document.getElementById("creditLimitText");
-                    const bar = document.getElementById("creditsBar");
+                    const bar = document.getElementById('creditsBar');
+
+                    if (bar) {
+                        if (limit !== null && limit !== undefined) {
+                            const pct = Math.min((used / Number(limit)) * 100, 100);
+                            bar.style.width = `${pct}%`;
+                        } else {
+                            bar.style.width = `${Math.min(used, 100)}%`;
+                        }
+                    }
 
                     if (limit !== null && limit !== undefined) {
                         limitText.innerText = ` / ${Number(limit).toFixed(2)}`;
