@@ -1379,20 +1379,24 @@ CHAT_TEMPLATE = """
                 "gpt-4o-mini": "N Tech AI 1.7 Basic",
                 "gpt-4.1-nano": "N Tech AI 1.7 Smart",
                 "gpt-4.1-mini": "N Tech AI 2.0 Basic (experimental)",
-                "gpt-5.4-nano": "N Tech AI 2.1 Smart",
+                "gpt-5.4-nano": "N Tech AI 2.3 Basic",
                 "gpt-5.4-mini": "N Tech AI 1.9 Smart (Being remade)",
                 "gpt-5-mini": "N Tech AI 2.2 Ultra"
             };
 
             function updateUiChips() {
-                document.getElementById("memoryChip").innerText = document.getElementById("memoryToggle").checked ? "On" : "Off";
-                const modelValue = document.getElementById("panelModel").value || "gpt-4o-mini";
-                document.getElementById("modelChip").innerText = MODEL_LABELS[modelValue] || modelValue;
+                document.getElementById("memoryChip").innerText =
+                    document.getElementById("memoryToggle").checked ? "On" : "Off";
+
+                const modelSelect = document.getElementById("panelModel");
+                document.getElementById("modelChip").innerText =
+                    modelSelect.options[modelSelect.selectedIndex].text;
 
                 const prefs = loadPrefs();
-                document.getElementById("themeChip").innerText = prefs.theme === "system"
-                    ? `System (${getCurrentThemeValue("system")})`
-                    : prefs.theme.charAt(0).toUpperCase() + prefs.theme.slice(1);
+                document.getElementById("themeChip").innerText =
+                    prefs.theme === "system"
+                        ? `System (${getCurrentThemeValue("system")})`
+                        : prefs.theme.charAt(0).toUpperCase() + prefs.theme.slice(1);
             }
         }
 
