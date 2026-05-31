@@ -685,7 +685,7 @@ CHAT_TEMPLATE = """
         }
 
         .app {
-            height: 100vh;
+            min-height: 100vh;
             display: grid;
             grid-template-columns: 1fr;
             gap: 0;
