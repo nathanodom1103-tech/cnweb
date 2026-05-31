@@ -1520,12 +1520,18 @@ CHAT_TEMPLATE = """
         }
 
         function updateUiChips() {
-            document.getElementById("memoryChip").innerText = document.getElementById("memoryToggle").checked ? "On" : "Off";
-            document.getElementById("modelChip").innerText = document.getElementById("panelModel").value || "gpt-4o-mini";
+            document.getElementById("memoryChip").innerText =
+                document.getElementById("memoryToggle").checked ? "On" : "Off";
+
+            const modelSelect = document.getElementById("panelModel");
+            document.getElementById("modelChip").innerText =
+                modelSelect.options[modelSelect.selectedIndex].text;
+
             const prefs = loadPrefs();
-            document.getElementById("themeChip").innerText = prefs.theme === "system"
-                ? `System (${getCurrentThemeValue("system")})`
-                : prefs.theme.charAt(0).toUpperCase() + prefs.theme.slice(1);
+            document.getElementById("themeChip").innerText =
+                prefs.theme === "system"
+                    ? `System (${getCurrentThemeValue("system")})`
+                    : prefs.theme.charAt(0).toUpperCase() + prefs.theme.slice(1);
         }
 
         async function askAI() {
