@@ -676,7 +676,11 @@ CHAT_TEMPLATE = """
     <title>N Tech AI 2.4</title>
     <style>
         """ + BASE_STYLE + """
-        body { height: 100vh; }
+        body {
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
 
         .app {
             height: 100vh;
@@ -1121,12 +1125,12 @@ CHAT_TEMPLATE = """
                 <div>
                     <h2>N Tech AI 2.4</h2>
                     <div class="subtitle">
-                        A cleaner workspace for chat, files, and vision. Style controls live in Settings, and the interface can follow your preferred theme, density, and motion settings.
+                        2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. N Tech AI Art competition submissions is almost closed! Images used to cost 20 credits (almost 2 cents!) per image (On basic), which we fixed, now only costing 9 credits (On basic) and 35 (on smart). N Code is fixed! 2.2 Ultra is out, and it is probably our best model yet! try it by clicking the settings to change models. N TECH AI FOUND ILLEGAL BEHAVIOUR AT 11:39 AM 5/19/26 and 5/21/26 around noon. If you know something, please tell the N Tech Staff. N Tech AI 2026. 2.4 is out!!! New features include: better photo scanning, enhanced image generation, and more! 2.4 new update: A cleaner workspace for chat, files, and vision. Style controls live in Settings, and the interface can follow your preferred theme, density, and motion settings.
                     </div>
                     <div class="chip-row">
                         <span class="pill"><span class="status-dot"></span> Live Chat</span>
                         <span class="pill">Memory: <span id="memoryChip">On</span></span>
-                        <span class="pill">Model: <span id="modelChip">gpt-4o-mini</span></span>
+                        <span class="pill">Model: <span id="modelChip">N Tech AI 1.7 Basic</span></span>
                         <span class="pill">Theme: <span id="themeChip">System</span></span>
                     </div>
                 </div>
@@ -1369,7 +1373,25 @@ CHAT_TEMPLATE = """
                 : prefs.theme.charAt(0).toUpperCase() + prefs.theme.slice(1);
 
             document.getElementById("memoryChip").innerText = prefs.memory ? "On" : "Off";
-            document.getElementById("modelChip").innerText = document.getElementById("panelModel").value || "gpt-4o-mini";
+            const MODEL_LABELS = {
+                "gpt-4o-mini": "N Tech AI 1.7 Basic",
+                "gpt-4.1-nano": "N Tech AI 1.7 Smart",
+                "gpt-4.1-mini": "N Tech AI 2.0 Basic (experimental)",
+                "gpt-5.4-nano": "N Tech AI 2.1 Smart",
+                "gpt-5.4-mini": "N Tech AI 1.9 Smart (Being remade)",
+                "gpt-5-mini": "N Tech AI 2.2 Ultra"
+            };
+
+            function updateUiChips() {
+                document.getElementById("memoryChip").innerText = document.getElementById("memoryToggle").checked ? "On" : "Off";
+                const modelValue = document.getElementById("panelModel").value || "gpt-4o-mini";
+                document.getElementById("modelChip").innerText = MODEL_LABELS[modelValue] || modelValue;
+
+                const prefs = loadPrefs();
+                document.getElementById("themeChip").innerText = prefs.theme === "system"
+                    ? `System (${getCurrentThemeValue("system")})`
+                    : prefs.theme.charAt(0).toUpperCase() + prefs.theme.slice(1);
+            }
         }
 
         function setSelectValue(id, value) {
