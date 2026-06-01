@@ -1140,7 +1140,7 @@ CHAT_TEMPLATE = """
         <div class="card glass">
             <div class="topbar">
                 <div>
-                    <h2>N Tech AI 2.4</h2>
+                    <h2>N Tech AI 2.5</h2>
                     <div class="subtitle" style="font-size: 5px;">
                         2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. N Tech AI Art competition submissions is almost closed! Images used to cost 20 credits (almost 2 cents!) per image (On basic), which we fixed, now only costing 9 credits (On basic) and 35 (on smart). N Code is fixed! 2.2 Ultra is out, and it is probably our best model yet! try it by clicking the settings to change models. N TECH AI FOUND ILLEGAL BEHAVIOUR AT 11:39 AM 5/19/26 and 5/21/26 around noon. If you know something, please tell the N Tech Staff. N Tech AI 2026. 2.4 is out!!! New features include: better photo scanning, enhanced image generation, and more! 2.4 new update: A cleaner workspace for chat, files, and vision. Style controls live in Settings, and the interface can follow your preferred theme, density, and motion settings. 2.5 is out, and what does it bring? NEW MODELS. N Tech AI 2.3 Smart is extremly smart and cost efficient, and 2.4 Smart is N Tech AI's first "Reasoning" Model, meaning it has insane accuracy, and is extremely good to use. The 2.5 models are the best models yet, but they are extremly expensive. use them only if you have a lot of credits. By Using N Tech AI, you agree to the updated terms and conditions. 
                     </div>
