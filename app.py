@@ -33,15 +33,30 @@ client = build_openai_client()
 # Pricing configuration
 # ----------------------------
 MODEL_PRICING = {
-    "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
-    "gpt-4.1-mini": {"input": 0.0004, "output": 0.0016},
-    "gpt-4.1-nano": {"input": 0.0001, "output": 0.0004},
-    "gpt-4o": {"input": 0.0025, "output": 0.01},
-    "gpt-5.4-nano": {"input": 0.00005, "output": 0.0002},
-    "gpt-5.4-mini": {"input": 0.0003, "output": 0.0012},
-    "gpt-5-mini": {"input": 0.00025, "output": 0.001},
-    "gpt-5.1-codex-mini": {"input": 0.0003, "output": 0.0012},
+    # --- Ultra-Low Cost / Massive Scale Automation ---
+    "gpt-4.1-nano": {"input": 0.00010, "output": 0.00040},  # Cheap legacy automation
+    "gpt-5-nano": {"input": 0.00005, "output": 0.00040},    # Ultra-frugal classification
+    "gpt-5.4-nano": {"input": 0.00020, "output": 0.00125},  # Modern light-task default
+
+    # --- Lightweight Apps & Chatbot Defaults ---
+    "gpt-4o-mini": {"input": 0.00015, "output": 0.00060},   # Highly reliable mini
+    "gpt-4.1-mini": {"input": 0.00040, "output": 0.00160},   
+    "gpt-5-mini": {"input": 0.00025, "output": 0.00200},    
+    "gpt-5.4-mini": {"input": 0.00075, "output": 0.00450},  # Recommended production mini
+
+    # --- Codex & Engineering Tiers ---
+    "gpt-5.1-codex-mini": {"input": 0.00025, "output": 0.00200},
+    "gpt-5.3-codex-global": {"input": 0.00175, "output": 0.01400}, # High-throughput coding
+
+    # --- Flagship Production Workhorses ---
+    "gpt-4o": {"input": 0.00250, "output": 0.01000},
+    "gpt-5.4": {"input": 0.00250, "output": 0.01500},       # Replaced older GPT-5 tiers
+    "gpt-5.5": {"input": 0.00500, "output": 0.03000},       # Brand-new premium flagship
+
+    # --- Elite Reasoning & STEM Models ---
+    "o4-mini": {"input": 0.00055, "output": 0.00220},       # Deep logic value king
 }
+
 
 IMAGE_PRICING = {
     "low": 0.009,
@@ -1127,7 +1142,7 @@ CHAT_TEMPLATE = """
                 <div>
                     <h2>N Tech AI 2.4</h2>
                     <div class="subtitle">
-                        2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. N Tech AI Art competition submissions is almost closed! Images used to cost 20 credits (almost 2 cents!) per image (On basic), which we fixed, now only costing 9 credits (On basic) and 35 (on smart). N Code is fixed! 2.2 Ultra is out, and it is probably our best model yet! try it by clicking the settings to change models. N TECH AI FOUND ILLEGAL BEHAVIOUR AT 11:39 AM 5/19/26 and 5/21/26 around noon. If you know something, please tell the N Tech Staff. N Tech AI 2026. 2.4 is out!!! New features include: better photo scanning, enhanced image generation, and more! 2.4 new update: A cleaner workspace for chat, files, and vision. Style controls live in Settings, and the interface can follow your preferred theme, density, and motion settings.
+                        2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. N Tech AI Art competition submissions is almost closed! Images used to cost 20 credits (almost 2 cents!) per image (On basic), which we fixed, now only costing 9 credits (On basic) and 35 (on smart). N Code is fixed! 2.2 Ultra is out, and it is probably our best model yet! try it by clicking the settings to change models. N TECH AI FOUND ILLEGAL BEHAVIOUR AT 11:39 AM 5/19/26 and 5/21/26 around noon. If you know something, please tell the N Tech Staff. N Tech AI 2026. 2.4 is out!!! New features include: better photo scanning, enhanced image generation, and more! 2.4 new update: A cleaner workspace for chat, files, and vision. Style controls live in Settings, and the interface can follow your preferred theme, density, and motion settings. 2.5 is out, and what does it bring? NEW MODELS. N Tech AI 2.3 Smart is extremly smart and cost efficient, and 2.4 Smart is N Tech AI's first "Reasoning" Model, meaning it has insane accuracy, and is extremely good to use. The 2.5 models are the best models yet, but they are extremly expensive. use them only if you have a lot of credits. By Using N Tech AI, you agree to the updated terms and conditions. 
                     </div>
                     <div class="chip-row">
                         <span class="pill"><span class="status-dot"></span> Live Chat</span>
@@ -1202,6 +1217,7 @@ CHAT_TEMPLATE = """
         <div class="panel-section">
             <h4>Model</h4>
             <select id="panelModel">
+                <!-- Standard & Mini Tiers (Your Existing Consumer Lineup) -->
                 <option value="gpt-4o-mini">N Tech 1.7 Basic</option>
                 <option value="gpt-4.1-nano">N Tech 1.7 Smart</option>
                 <option value="gpt-4.1-mini">N Tech 2.0 Basic (experimental)</option>
@@ -1211,9 +1227,18 @@ CHAT_TEMPLATE = """
                 <option value="gpt-5.4-nano">N Tech AI 2.1 Smart</option>
                 <option value="gpt-5.4-nano">N Tech AI 2.2 Basic</option>
                 <option value="gpt-5-mini">N Tech AI 2.2 Ultra</option>
-                <option value="gpt-4.1-nano">N Tech AI 2.3 Basic (Super cheap)</option>
-                <option value="gpt-5.4-nano">N Tech AI 2.3 Smart</option>
+                <option value="gpt-5-nano">N Tech AI 2.3 Smart (Super cheap)</option>
+                <option value="gpt-5.4-mini">N Tech AI 2.3 Basic (Costly)</option>
+                <option value="gpt-5.4-nano">N Tech AI 2.4 Basic</option>
+                <option value="o4-mini">N Tech AI 2.4 Smart</option>
+
+                <!--2.5 MODELS-->
+                
+                <option value="gpt-5.4">N Tech AI 2.5 Smart</option>
+                <option value="gpt-5.5">N Tech AI 2.5 Ultra</option>
+                <option value="gpt-5.3-codex-global">N Tech AI 2.5 Code</option>
             </select>
+
         </div>
 
         <div class="panel-section">
