@@ -290,12 +290,17 @@ def cost_from_usage(model_name, prompt_tokens=0, completion_tokens=0):
 
 def analyze_image_with_vision(data_url, prompt="Describe this image in detail.", model=None):
     vision_model = model or VISION_MODEL
+
     res = client.chat.completions.create(
         model=vision_model,
         messages=[
             {
                 "role": "system",
-                "content": "You are a precise image analysis assistant. Describe the image clearly and briefly, then mention notable objects, text, actions, and safety issues if present.",
+                "content": (
+                    "You are a precise image analysis assistant. "
+                    "Describe the image clearly and briefly, then mention notable objects, "
+                    "text, actions, and safety issues if present."
+                ),
             },
             {
                 "role": "user",
@@ -306,11 +311,19 @@ def analyze_image_with_vision(data_url, prompt="Describe this image in detail.",
             },
         ],
     )
+
     text = res.choices[0].message.content or ""
+
     usage = getattr(res, "usage", None)
     prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
     completion_tokens = getattr(usage, "completion_tokens", 0) or 0
-    cost = cost_from_usage(vision_model, prompt_tokens, completion_tokens)
+
+    cost = cost_from_usage(
+        vision_model,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+    )
+
     return text, cost, vision_model
 
 
@@ -1235,8 +1248,8 @@ CHAT_TEMPLATE = """
 
                 <!--2.5 MODELS-->
                 
-                <option value="gpt-5.4">N Tech AI 2.5 Smart</option>
-                <option value="gpt-5.5">N Tech AI 2.5 Ultra</option>
+                <option value="gpt-5.4">N Tech AI 2.5 Smart (Experimental)</option>
+                <option value="gpt-5.5">N Tech AI 2.5 Ultra (DO NOT USE YET)</option>
                 <option value="gpt-5.3-codex-global">N Tech AI 2.5 Code</option>
             </select>
 
@@ -1512,7 +1525,7 @@ CHAT_TEMPLATE = """
 
                         return `
                             <div class="message ${m.role}">
-                                <div class="${avatarClass}">${m.role === "user" ? "Y" : "A"}</div>
+                                <div class="${avatarClass}">${m.role === "user" ? "Y" : "N"}</div>
                                 <div class="bubble-wrap">
                                     <div class="bubble">${escapeHtml(m.content)}${previewHtml}</div>
                                     ${metaHtml}
