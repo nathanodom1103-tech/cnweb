@@ -34,28 +34,29 @@ client = build_openai_client()
 # ----------------------------
 MODEL_PRICING = {
     # --- Ultra-Low Cost / Massive Scale Automation ---
-    "gpt-4.1-nano": {"input": 0.00010, "output": 0.00040},  # Cheap legacy automation
-    "gpt-5-nano": {"input": 0.00005, "output": 0.00040},    # Ultra-frugal classification
-    "gpt-5.4-nano": {"input": 0.00020, "output": 0.00125},  # Modern light-task default
+    "gpt-4.1-nano": {"input": 0.00010, "output": 0.00040},  # Accurate
+    "gpt-5-nano": {"input": 0.00005, "output": 0.00040},    # Accurate
+    "gpt-5.4-nano": {"input": 0.00010, "output": 0.000625}, # Accurate (Standard)
 
     # --- Lightweight Apps & Chatbot Defaults ---
-    "gpt-4o-mini": {"input": 0.00015, "output": 0.00060},   # Highly reliable mini
-    "gpt-4.1-mini": {"input": 0.00040, "output": 0.00160},   
-    "gpt-5-mini": {"input": 0.00025, "output": 0.00200},    
-    "gpt-5.4-mini": {"input": 0.00075, "output": 0.00450},  # Recommended production mini
+    "gpt-4o-mini": {"input": 0.00015, "output": 0.00060},    # Accurate
+    "gpt-4.1-mini": {"input": 0.00040, "output": 0.00160},   # Accurate
+    "gpt-5-mini": {"input": 0.00025, "output": 0.00200},     # Accurate
+    "gpt-5.4-mini": {"input": 0.00075, "output": 0.00450},  # Accurate
 
     # --- Codex & Engineering Tiers ---
-    "gpt-5.1-codex-mini": {"input": 0.00025, "output": 0.00200},
-    "gpt-5.3-codex-global": {"input": 0.00175, "output": 0.01400}, # High-throughput coding
+    "gpt-5.1-codex-mini": {"input": 0.00025, "output": 0.00200},  # Accurate
+    "gpt-5.3-codex-global": {"input": 0.00175, "output": 0.01400}, # Accurate
 
     # --- Flagship Production Workhorses ---
-    "gpt-4o": {"input": 0.00250, "output": 0.01000},
-    "gpt-5.4": {"input": 0.00250, "output": 0.01500},       # Replaced older GPT-5 tiers
-    "gpt-5.5": {"input": 0.00500, "output": 0.03000},       # Brand-new premium flagship
+    "gpt-4o": {"input": 0.00250, "output": 0.01000},         # Accurate
+    "gpt-5.4": {"input": 0.00250, "output": 0.01500},        # Accurate
+    "gpt-5.5": {"input": 0.00500, "output": 0.03000},        # Accurate
 
     # --- Elite Reasoning & STEM Models ---
-    "o4-mini": {"input": 0.00055, "output": 0.00220},       # Deep logic value king
+    "o4-mini": {"input": 0.00110, "output": 0.00440},        # FIXED: Updated to Standard API rate
 }
+
 
 
 IMAGE_PRICING = {
