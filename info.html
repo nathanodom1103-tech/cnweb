@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>N Tech AI</title>
+  <style>
+    :root {
+      --bg: #020203;
+      --red: #ff1a1a;
+      --red-soft: rgba(255, 26, 26, 0.18);
+      --red-glow: rgba(255, 26, 26, 0.65);
+      --text: #f3f4f6;
+      --muted: rgba(243, 244, 246, 0.72);
+      --panel: rgba(10, 10, 12, 0.82);
+      --panel-2: rgba(12, 12, 16, 0.92);
+      --border: rgba(255,255,255,0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      overflow-x: hidden;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 50% 35%, rgba(255, 0, 0, 0.12), transparent 22%),
+        radial-gradient(circle at 20% 20%, rgba(255, 0, 0, 0.05), transparent 18%),
+        radial-gradient(circle at 80% 35%, rgba(255, 0, 0, 0.05), transparent 20%),
+        linear-gradient(180deg, #000 0%, #050505 100%);
+    }
+
+    .grain,
+    .scanlines,
+    .vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .grain {
+      opacity: 0.06;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.18) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.14) 1px, transparent 1px);
+      background-size: 3px 3px;
+      animation: grainMove 0.4s steps(2) infinite;
+      mix-blend-mode: screen;
+    }
+
+    @keyframes grainMove {
+      0% { transform: translate(0,0); }
+      25% { transform: translate(-1%, 1%); }
+      50% { transform: translate(1%, -1%); }
+      75% { transform: translate(-1%, -1%); }
+      100% { transform: translate(0,0); }
+    }
+
+    .scanlines {
+      opacity: 0.16;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.05) 0px,
+        rgba(255,255,255,0.02) 1px,
+        transparent 2px,
+        transparent 5px
+      );
+    }
+
+    .vignette {
+      background: radial-gradient(circle at center, transparent 38%, rgba(0,0,0,0.88) 100%);
+      opacity: 0.98;
+    }
+
+    .scene {
+      position: relative;
+      min-height: 100vh;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .intro {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at center, rgba(30, 0, 0, 0.45), rgba(0,0,0,0.96) 55%, #000 100%);
+      z-index: 20;
+      transform-origin: center center;
+      transition: opacity 1.2s ease, transform 1.2s ease;
+      animation: introCamera 10.5s ease-in-out forwards;
+    }
+
+    .intro.hidden {
+      opacity: 0;
+      transform: scale(1.06);
+      pointer-events: none;
+    }
+
+    @keyframes introCamera {
+      0%   { transform: scale(0.96) translateY(6px); }
+      30%  { transform: scale(1.00) translateY(0); }
+      70%  { transform: scale(1.05) translateY(-4px); }
+      100% { transform: scale(1.10) translateY(-8px); }
+    }
+
+    .fog {
+      position: absolute;
+      inset: -20%;
+      filter: blur(28px);
+      opacity: 0.34;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 20% 70%, rgba(255, 0, 0, 0.12), transparent 18%),
+        radial-gradient(circle at 40% 50%, rgba(255, 50, 50, 0.10), transparent 20%),
+        radial-gradient(circle at 70% 60%, rgba(255, 0, 0, 0.10), transparent 22%),
+        radial-gradient(circle at 85% 40%, rgba(255, 255, 255, 0.04), transparent 18%);
+      animation: fogDrift 14s ease-in-out infinite alternate;
+    }
+
+    .fog.f2 {
+      opacity: 0.22;
+      animation-duration: 18s;
+      animation-direction: alternate-reverse;
+    }
+
+    @keyframes fogDrift {
+      0% { transform: translate3d(-2%, 1%, 0) scale(1); }
+      50% { transform: translate3d(3%, -1%, 0) scale(1.04); }
+      100% { transform: translate3d(-1%, 2%, 0) scale(1.02); }
+    }
+
+    .lightning-layer,
+    .particles,
+    .laser-layer,
+    .noise-flash {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .lightning-layer {
+      opacity: 0.82;
+    }
+
+    .bolt {
+      position: absolute;
+      width: 3px;
+      height: 220px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,0,0,0.98), rgba(255,0,0,0));
+      filter: drop-shadow(0 0 14px rgba(255, 0, 0, 0.95)) drop-shadow(0 0 30px rgba(255, 0, 0, 0.65));
+      clip-path: polygon(50% 0%, 75% 10%, 58% 20%, 82% 31%, 46% 48%, 72% 60%, 38% 78%, 60% 88%, 42% 100%, 0 100%, 26% 86%, 10% 73%, 30% 60%, 8% 44%, 35% 31%, 18% 18%, 40% 8%);
+      transform-origin: top center;
+      opacity: 0;
+      animation: boltFlicker 2.2s linear infinite;
+    }
+
+    .bolt.b1 { left: 33%; top: 11%; transform: rotate(-10deg) scaleY(1.15); animation-delay: 0.1s; }
+    .bolt.b2 { left: 50%; top: 6%; transform: rotate(7deg) scaleY(1.35); animation-delay: 0.55s; height: 280px; }
+    .bolt.b3 { left: 67%; top: 14%; transform: rotate(-6deg) scaleY(1.1); animation-delay: 0.95s; }
+
+    @keyframes boltFlicker {
+      0%, 8%, 18%, 100% { opacity: 0; transform: scaleY(0.7) translateY(0); }
+      10%, 12% { opacity: 1; transform: scaleY(1.08) translateY(-4px); }
+      20%, 24% { opacity: 0.55; transform: scaleY(1.02) translateY(-2px); }
+      60%, 62% { opacity: 1; }
+      63%, 75% { opacity: 0; }
+      82% { opacity: 0.85; }
+    }
+
+    .noise-flash {
+      opacity: 0;
+      background: rgba(255,255,255,0.06);
+      animation: flash 6.5s linear infinite;
+      mix-blend-mode: screen;
+    }
+
+    @keyframes flash {
+      0%, 68%, 100% { opacity: 0; }
+      69% { opacity: 0.10; }
+      71% { opacity: 0; }
+      84% { opacity: 0.06; }
+      85% { opacity: 0; }
+    }
+
+    .title-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44vh;
+      width: 100%;
+      transform: translateZ(0);
+    }
+
+    .logo-shell {
+      position: relative;
+      width: min(92vw, 1200px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 1200px;
+    }
+
+    .camera-shake {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform-style: preserve-3d;
+      animation: subtleShake 1.2s infinite linear alternate;
+    }
+
+    @keyframes subtleShake {
+      0% { transform: translate3d(0,0,0) rotateX(0deg) rotateY(0deg); }
+      20% { transform: translate3d(-1px, 1px, 0) rotateX(0.2deg) rotateY(-0.2deg); }
+      40% { transform: translate3d(1px, -1px, 0) rotateX(-0.2deg) rotateY(0.2deg); }
+      60% { transform: translate3d(-2px, 0, 0) rotateX(0deg) rotateY(0deg); }
+      80% { transform: translate3d(2px, 1px, 0) rotateX(0.15deg) rotateY(-0.1deg); }
+      100% { transform: translate3d(0,0,0) rotateX(0deg) rotateY(0deg); }
+    }
+
+    .n {
+      position: relative;
+      font-size: clamp(10rem, 24vw, 22rem);
+      line-height: 0.85;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      color: #ff2a2a;
+      text-transform: uppercase;
+      text-shadow:
+        0 0 18px rgba(255,0,0,0.92),
+        0 0 40px rgba(255,0,0,0.72),
+        0 0 90px rgba(255,0,0,0.46),
+        0 0 150px rgba(255,0,0,0.24);
+      filter: saturate(1.25);
+      opacity: 0;
+      transform: translateY(18px) scale(0.7);
+      animation:
+        nReveal 3.1s ease forwards,
+        nPulse 2.2s ease-in-out 3.2s infinite;
+      z-index: 3;
+    }
+
+    .n::before,
+    .n::after {
+      content: attr(data-text);
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    .n::before {
+      color: #ff7b7b;
+      transform: translate(4px, -2px);
+      clip-path: inset(0 0 58% 0);
+      animation: glitchTop 1.8s infinite linear alternate-reverse;
+    }
+
+    .n::after {
+      color: #990000;
+      transform: translate(-4px, 2px);
+      clip-path: inset(46% 0 0 0);
+      animation: glitchBottom 1.5s infinite linear alternate-reverse;
+    }
+
+    @keyframes nReveal {
+      0% { opacity: 0; transform: translateY(30px) scale(0.35) rotate(-4deg); filter: blur(10px); }
+      35% { opacity: 1; transform: translateY(0) scale(1.02) rotate(0deg); filter: blur(0); }
+      65% { opacity: 1; transform: translateY(-2px) scale(1); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes nPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+
+    @keyframes glitchTop {
+      0% { clip-path: inset(0 0 72% 0); transform: translate(3px, -2px); }
+      25% { clip-path: inset(0 0 63% 0); transform: translate(-2px, 1px); }
+      50% { clip-path: inset(0 0 78% 0); transform: translate(4px, 0); }
+      75% { clip-path: inset(0 0 56% 0); transform: translate(-3px, -1px); }
+      100% { clip-path: inset(0 0 68% 0); transform: translate(2px, 0); }
+    }
+
+    @keyframes glitchBottom {
+      0% { clip-path: inset(46% 0 0 0); transform: translate(-4px, 2px); }
+      25% { clip-path: inset(58% 0 0 0); transform: translate(3px, -1px); }
+      50% { clip-path: inset(40% 0 0 0); transform: translate(-1px, 2px); }
+      75% { clip-path: inset(54% 0 0 0); transform: translate(4px, 0); }
+      100% { clip-path: inset(44% 0 0 0); transform: translate(-2px, 1px); }
+    }
+
+    .techai {
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translate(-42%, -50%) translateX(-250px) scale(0.98);
+      font-size: clamp(2rem, 6vw, 6rem);
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #f7f7f7;
+      text-shadow:
+        0 0 10px rgba(255,0,0,0.45),
+        0 0 24px rgba(255,0,0,0.28);
+      opacity: 0;
+      animation:
+        slideTech 2.8s cubic-bezier(.16,.84,.22,1) forwards 3.5s,
+        techGlow 2.2s ease-in-out 6s infinite;
+      z-index: 2;
+      white-space: nowrap;
+    }
+
+    @keyframes slideTech {
+      0% { opacity: 0; transform: translate(-42%, -50%) translateX(-320px) skewX(-10deg); }
+      40% { opacity: 0.45; }
+      100% { opacity: 1; transform: translate(-42%, -50%) translateX(115px) skewX(0deg); }
+    }
+
+    @keyframes techGlow {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.16); }
+    }
+
+    .title-bar {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: min(88vw, 980px);
+      height: 3px;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(90deg, transparent, rgba(255,0,0,0.95), rgba(255,255,255,0.95), rgba(255,0,0,0.95), transparent);
+      filter: blur(1px);
+      opacity: 0;
+      animation: barSweep 5.8s ease-in-out forwards 1.4s;
+      z-index: 1;
+    }
+
+    @keyframes barSweep {
+      0% { opacity: 0; transform: translate(-50%, -50%) scaleX(0.08); }
+      20% { opacity: 0.85; }
+      50% { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
+      75% { opacity: 0.9; }
+      100% { opacity: 0; transform: translate(-50%, -50%) scaleX(1.05); }
+    }
+
+    .red-scan {
+      position: absolute;
+      left: -20%;
+      top: 50%;
+      width: 140%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255,0,0,0.1), rgba(255,0,0,0.95), rgba(255,255,255,0.95), rgba(255,0,0,0.95), rgba(255,0,0,0.1), transparent);
+      box-shadow: 0 0 18px rgba(255,0,0,0.75);
+      transform: translateY(-50%) translateX(-18%);
+      opacity: 0;
+      animation: scanMove 4.6s linear infinite 2.1s;
+      z-index: 4;
+    }
+
+    .red-scan::before,
+    .red-scan::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: linear-gradient(180deg, rgba(255,0,0,0), rgba(255,0,0,0.25), rgba(255,0,0,0));
+      filter: blur(6px);
+      opacity: 0.8;
+    }
+
+    @keyframes scanMove {
+      0% { opacity: 0; transform: translateY(-50%) translateX(-18%); }
+      8% { opacity: 0.8; }
+      50% { opacity: 1; }
+      100% { opacity: 0; transform: translateY(-50%) translateX(18%); }
+    }
+
+    .spark-ring {
+      position: absolute;
+      inset: auto;
+      width: min(68vw, 820px);
+      height: min(68vw, 820px);
+      border-radius: 50%;
+      border: 1px solid rgba(255,0,0,0.16);
+      box-shadow: 0 0 30px rgba(255,0,0,0.08), inset 0 0 50px rgba(255,0,0,0.05);
+      transform: scale(0.82);
+      opacity: 0;
+      animation: ringPulse 5.5s ease-in-out forwards 1.2s;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes ringPulse {
+      0% { opacity: 0; transform: scale(0.72); }
+      28% { opacity: 0.55; }
+      55% { opacity: 0.22; transform: scale(1.04); }
+      100% { opacity: 0; transform: scale(1.12); }
+    }
+
+    .intro-caption {
+      position: absolute;
+      bottom: 7vh;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.68);
+      font-size: 0.92rem;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      text-align: center;
+      opacity: 0;
+      animation: captionIn 1.8s ease forwards 2.6s;
+      z-index: 5;
+    }
+
+    @keyframes captionIn {
+      from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+      to { opacity: 0.9; transform: translateX(-50%) translateY(0); }
+    }
+
+    .main {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      width: 100%;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 1.2s ease, transform 1.2s ease;
+      padding: clamp(1rem, 3vw, 2rem);
+      display: grid;
+      align-items: center;
+    }
+
+    .main.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .container {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      display: grid;
+      gap: 1rem;
+    }
+
+    .hero,
+    .info,
+    .card {
+      background: linear-gradient(180deg, rgba(16,16,20,0.9), rgba(8,8,10,0.8));
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.42);
+      backdrop-filter: blur(12px);
+    }
+
+    .hero {
+      padding: clamp(1.4rem, 3vw, 2.5rem);
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 1rem;
+      align-items: stretch;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(2.2rem, 5vw, 4.5rem);
+      line-height: 1;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .hero p {
+      margin: 1rem 0 0;
+      color: var(--muted);
+      line-height: 1.8;
+      font-size: 1.02rem;
+      max-width: 66ch;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      padding: 0.55rem 0.8rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.11);
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.9);
+      font-size: 0.9rem;
+    }
+
+    .info {
+      padding: 1.2rem;
+      display: grid;
+      gap: 0.9rem;
+      align-content: start;
+    }
+
+    .info h2 {
+      margin: 0;
+      font-size: 1.15rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.9rem;
+    }
+
+    .stat {
+      padding: 1rem;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.08);
+      min-height: 110px;
+    }
+
+    .stat strong {
+      display: block;
+      margin-bottom: 0.3rem;
+      font-size: 1.1rem;
+    }
+
+    .stat span {
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.92rem;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .card {
+      padding: 1.1rem;
+      min-height: 160px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      background: linear-gradient(120deg, transparent 25%, rgba(255,0,0,0.08), rgba(255,255,255,0.03), transparent 75%);
+      transform: translateX(-120%);
+      animation: sheen 7s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes sheen {
+      0%, 20% { transform: translateX(-120%); }
+      50% { transform: translateX(120%); }
+      100% { transform: translateX(120%); }
+    }
+
+    .card h3 {
+      position: relative;
+      z-index: 1;
+      margin: 0 0 0.6rem;
+      font-size: 1.05rem;
+    }
+
+    .card p {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .footer {
+      text-align: center;
+      color: rgba(255,255,255,0.48);
+      font-size: 0.88rem;
+      letter-spacing: 0.05em;
+      padding-bottom: 0.6rem;
+    }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: 1fr; }
+      .stat-grid { grid-template-columns: 1fr; }
+      .intro-caption { width: 92vw; }
+    }
+
+    @media (max-width: 520px) {
+      .hero h1 { font-size: 2rem; }
+      .intro-caption { font-size: 0.8rem; letter-spacing: 0.18em; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grain"></div>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <section id="intro" class="intro" aria-label="N Tech AI intro animation">
+    <div class="fog"></div>
+    <div class="fog f2"></div>
+    <div class="lightning-layer">
+      <div class="bolt b1"></div>
+      <div class="bolt b2"></div>
+      <div class="bolt b3"></div>
+    </div>
+    <div class="noise-flash"></div>
+    <div class="laser-layer">
+      <div class="red-scan"></div>
+    </div>
+
+    <div class="spark-ring"></div>
+
+    <div class="title-wrap">
+      <div class="logo-shell">
+        <div class="camera-shake">
+          <div class="n" data-text="N">N</div>
+          <div class="title-bar"></div>
+          <div class="techai">Tech AI</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="intro-caption">N Tech AI Info loading... (enter/return to skip)</div>
+  </section>
+
+  <main id="main" class="main" aria-live="polite">
+    <div class="container">
+      <section class="hero">
+        <div>
+          <h1>N Tech AI</h1>
+          <p>
+            A cleaner workspace for chat, files, and vision. Style controls live in Settings, and the interface can follow your preferred theme, density, and motion settings. 2.5 is out, and what does it bring? NEW MODELS. N Tech AI 2.3 Smart is extremly smart and cost efficient, and 2.4 Smart is N Tech AI's first "Reasoning" Model, meaning it has insane accuracy, and is extremely good to use. The 2.5 models are the best models yet, but they are extremly expensive. use them only if you have a lot of credits. By Using N Tech AI, you agree to the updated terms and conditions.
+          </p>
+          <div class="badge-row">
+            <span class="badge">N Tech AI Chat</span>
+            <span class="badge">Image Generation</span>
+            <span class="badge">N Code</span>
+            <span class="badge">Coming soon: N Vid</span>
+            <span class="badge">N Tech AI Vision</span>
+          </div>
+        </div>
+
+        <aside class="info">
+          <h2>Best Models</h2>
+          <div class="stat-grid">
+            <div class="stat"><strong>2.3 Smart</strong><span>this is one of your cheapest models, for everything, it can handle long conversations, while being simple and efficient. This is a very good EM model</span></div>
+            <div class="stat"><strong>1.7 Basic</strong><span>very good for basic conversations, while staying cost efficient. CHEAPEST MODEL.</span></div>
+            <div class="stat"><strong>2.4 Smart</strong><span>First model that is capable of really thinking. This EM model allows fun conversations with intelligence that matches. It can provide fast responses, but it will take time to generate the most accurate possible responses.</span></div>
+            <div class="stat"><strong>2.5 Ultra</strong><span>The best model of all of N Tech AI is 2.5 Ultra, however this model is VERY EXPENSIVE. this model can generate extreme responses of up to 96,00 words, and can do realtime searches. Over time we will make this model cheaper as better ones come in, but right now, it could cost you up to a cent per request! Most would say it is worth it though.</span></div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="cards">
+        <article class="card">
+          <h4>N Tech AI Terms and conditions</h4>
+          <p>Welcome to N Tech AI. By accessing or using our services, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions. Please read them carefully, as they govern your use of our AI technologies and related services. If you do not agree to these terms, you must refrain from using our services.
+
+When utilizing N Tech AI, you are expected to use our technology responsibly and ethically. This includes, but is not limited to, prohibitions against using our AI services to cheat, plagiarize, or otherwise violate any educational institution's rules and regulations. Academic integrity is of utmost importance, and any attempt to manipulate, misuse, or exploit our AI for dishonest purposes will not be tolerated. Users found engaging in such activities may face immediate termination of their account and potential reporting to relevant authorities.
+
+N Tech AI reserves the right to monitor usage of our services to ensure compliance with these terms. We may take necessary measures, including disabling access to our platform and implementing disciplinary actions, against any users who violate this policy. It is your responsibility to stay informed about your school's policies regarding the use of external tools and artificial intelligence resources. By using our services, you agree to comply with all such policies and to promote a culture of honesty and integrity within your academic endeavors. 
+
+N Tech AI is not responsible for your use of the AI in any way.
+The generation of inappropriate images is not prohibited and will not be tolerated by N Tech AI. The same applies for the uploading of inappropriate images to the AI.
+</p>
+        </article>
+        <article class="card">
+          <h3>N Tech AI 2.5 update</h3>
+          <p>2.5 is out, and what does it bring? NEW MODELS. N Tech AI 2.3 Smart is extremly smart and cost efficient, and 2.4 Smart is N Tech AI's first "Reasoning" Model, meaning it has insane accuracy, and is extremely good to use. The 2.5 models are the best models yet, but they are extremly expensive. use them only if you have a lot of credits. By Using N Tech AI, you agree to the updated terms and conditions.</p>
+        </article>
+        <article class="card">
+          <h3>N Tech AI 2.4 update</h3>
+          <p> 2.4 is out!!! New features include: better photo scanning, enhanced image generation, and more! 2.4 new update: A cleaner workspace for chat, files, and vision. Style controls live in Settings, and the interface can follow your preferred theme, density, and motion settings.</p>
+        </article>
+        <article class="card">
+          <h3>N Tech 2.3 or less</h3>
+          <p>2.1 new features: chat history, optional memory. Note: 1.9 Smart is the same as 1.8 Ultra, but being remade. N Tech AI Art competition submissions is almost closed! Images used to cost 20 credits (almost 2 cents!) per image (On basic), which we fixed, now only costing 9 credits (On basic) and 35 (on smart). N Code is fixed! 2.2 Ultra is out, and it is probably our best model yet! try it by clicking the settings to change models. N TECH AI FOUND ILLEGAL BEHAVIOUR AT 11:39 AM 5/19/26 and 5/21/26 around noon. If you know something, please tell the N Tech Staff. </p>
+        </article>
+      </section>
+
+      <div class="footer">N Tech AI • 2.5 Version</div>
+    </div>
+  </main>
+
+  <script>
+    const intro = document.getElementById('intro');
+    const main = document.getElementById('main');
+
+    let switched = false;
+    function revealMain() {
+      if (switched) return;
+      switched = true;
+      intro.classList.add('hidden');
+      setTimeout(() => {
+        main.classList.add('visible');
+      }, 350);
+    }
+
+    setTimeout(revealMain, 10500);
+    document.addEventListener('click', revealMain);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ') revealMain();
+    });
+  </script>
+</body>
+</html>
