@@ -1156,7 +1156,7 @@ CHAT_TEMPLATE = """
                 <div>
                     <h2>N Tech AI 2.5</h2>
                     <div class="subtitle" style="font-size: 7px;">
-                         2.4 is out!!! New features include: better photo scanning, enhanced image generation, and more! 2.4 new update: A cleaner workspace for chat, files, and vision. Style controls live in Settings, and the interface can follow your preferred theme, density, and motion settings. 2.5 is out, and what does it bring? NEW MODELS. N Tech AI 2.3 Smart is extremly smart and cost efficient, and 2.4 Smart is N Tech AI's first "Reasoning" Model, meaning it has insane accuracy, and is extremely good to use. The 2.5 models are the best models yet, but they are extremly expensive. use them only if you have a lot of credits. By Using N Tech AI, you agree to the updated terms and conditions. See all of this at >>> info.thecnweb.org <<< 
+                         WARNING: >>> IMAGES ARE NOT BE AVAILIBLE <<< 2.4 is out!!! New features include: better photo scanning, enhanced image generation, and more! 2.4 new update: A cleaner workspace for chat, files, and vision. Style controls live in Settings, and the interface can follow your preferred theme, density, and motion settings. 2.5 is out, and what does it bring? NEW MODELS. N Tech AI 2.3 Smart is extremly smart and cost efficient, and 2.4 Smart is N Tech AI's first "Reasoning" Model, meaning it has insane accuracy, and is extremely good to use. The 2.5 models are the best models yet, but they are extremly expensive. use them only if you have a lot of credits. By Using N Tech AI, you agree to the updated terms and conditions. See all of this at >>> info.thecnweb.org <<< 
                     </div>
                     <div class="chip-row">
                         <span class="pill"><span class="status-dot"></span> Live Chat</span>
@@ -1249,7 +1249,7 @@ CHAT_TEMPLATE = """
                 <!--2.5 MODELS-->
                 
                 <option value="gpt-5.4">N Tech AI 2.5 Smart (Experimental)</option>
-                <option value="gpt-5.5">N Tech AI 2.5 Ultra (DO NOT USE YET)</option>
+                <option value="gpt-5.5">N Tech AI 2.5 Ultra (Costly)</option>
                 <option value="gpt-5.3-codex-global">N Tech AI 2.5 Code</option>
             </select>
 
@@ -1940,12 +1940,12 @@ IMAGE_TEMPLATE = """
             <a href="/">&larr; Back to Chat</a>
             <div class="muted">N Tech AI Images • 1024x1024</div>
         </div>
-        <h2 style="margin-top:0;">N Tech AI Image Generation</h2>
+        <h2 style="margin-top:0;">N Tech AI Image Generation >>> DO NOT USE <<< </h2>
         <div class="muted">Signed in as: {{ idn }}</div>
         <label>Quality</label>
         <select id="quality" onchange="handleQualityChange()">
-            <option value="low">Low (~$0.009/image)</option>
-            <option value="high">High (~$0.035/image)</option>
+            <option value="low">Low (~$0.04/image)</option>
+            <option value="high">High (~$0.35/image)</option>
         </select>
         <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
         <button class="btn" onclick="generateImage()">Generate</button>
@@ -1959,7 +1959,7 @@ IMAGE_TEMPLATE = """
         function handleQualityChange() {
             const quality = document.getElementById('quality').value;
             if (quality === 'high') {
-                alert('High quality images cost approximately $0.035 per 1024×1024 image.');
+                alert('High quality images cost approximately $0.35 per 1024×1024 image.');
             }
         }
 
