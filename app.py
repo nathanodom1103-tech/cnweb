@@ -60,8 +60,8 @@ MODEL_PRICING = {
 
 
 IMAGE_PRICING = {
-    "low": 0.009,
-    "high": 0.035,
+    "low": 0.02,
+    "high": 0.35,
 }
 
 IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
@@ -1155,8 +1155,8 @@ CHAT_TEMPLATE = """
             <div class="topbar">
                 <div>
                     <h2>N Tech AI 2.5</h2>
-                    <div class="subtitle" style="font-size: 7px;">
-                         WARNING: >>> IMAGES ARE NOT BE AVAILIBLE <<< 2.4 is out!!! New features include: better photo scanning, enhanced image generation, and more! 2.4 new update: A cleaner workspace for chat, files, and vision. Style controls live in Settings, and the interface can follow your preferred theme, density, and motion settings. 2.5 is out, and what does it bring? NEW MODELS. N Tech AI 2.3 Smart is extremly smart and cost efficient, and 2.4 Smart is N Tech AI's first "Reasoning" Model, meaning it has insane accuracy, and is extremely good to use. The 2.5 models are the best models yet, but they are extremly expensive. use them only if you have a lot of credits. By Using N Tech AI, you agree to the updated terms and conditions. See all of this at >>> info.thecnweb.org <<< 
+                    <div class="subtitle" style="font-size: 8px;">
+                         2.5 is out, and what does it bring? NEW MODELS. N Tech AI 2.3 Smart is extremly smart and cost efficient, and 2.4 Smart is N Tech AI's first "Reasoning" Model, meaning it has insane accuracy, and is extremely good to use. The 2.5 models are the best models yet, but they are extremly expensive. use them only if you have a lot of credits. By Using N Tech AI, you agree to the updated terms and conditions. See all of this at >>> info.thecnweb.org <<< 
                     </div>
                     <div class="chip-row">
                         <span class="pill"><span class="status-dot"></span> Live Chat</span>
@@ -1241,16 +1241,16 @@ CHAT_TEMPLATE = """
                 <option value="gpt-5.4-nano">N Tech AI 2.1 Smart</option>
                 <option value="gpt-5.4-nano">N Tech AI 2.2 Basic</option>
                 <option value="gpt-5-mini">N Tech AI 2.2 Ultra</option>
-                <option value="gpt-5-nano">N Tech AI 2.3 Smart (Super cheap)</option>
-                <option value="gpt-5.4-mini">N Tech AI 2.3 Basic (Costly)</option>
+                <option value="gpt-5-nano">N Tech AI 2.3 Smart (EFFICIENT)</option>
+                <option value="gpt-5.4-mini">N Tech AI 2.3 Basic</option>
                 <option value="gpt-5.4-nano">N Tech AI 2.4 Basic</option>
-                <option value="o4-mini">N Tech AI 2.4 Smart</option>
+                <option value="o4-mini">N Tech AI 2.4 Smart (SMART)</option>
 
                 <!--2.5 MODELS-->
                 
-                <option value="gpt-5.4">N Tech AI 2.5 Smart (Experimental)</option>
-                <option value="gpt-5.5">N Tech AI 2.5 Ultra (Costly)</option>
-                <option value="gpt-5.3-codex-global">N Tech AI 2.5 Code</option>
+                <option value="gpt-5.4">N Tech AI 2.5 Smart</option>
+                <option value="gpt-5.5">N Tech AI 2.5 Ultra</option>
+                <option value="gpt-5.3-codex-global">N Tech AI Code (USE N CODE)</option>
             </select>
 
         </div>
@@ -1266,8 +1266,8 @@ CHAT_TEMPLATE = """
                         <option value="dark">Dark</option>
                         <option value="midnight">Midnight</option>
                         <option value="slate">Slate</option>
-                        <option value="emerald">Emerald</option>
-                        <option value="rose">Rose</option>
+                        <option value="emerald">Emerald (COMING SOON)</option>
+                        <option value="rose">Rose (COMING SOON)</option>
                     </select>
                 </div>
 
@@ -1345,6 +1345,7 @@ CHAT_TEMPLATE = """
                 <a class="link-card" href="/image">Open Image Generator</a>
                 <a class="link-card" href="/code">Open N-Code</a>
                 {% if is_admin %}<a class="link-card" href="/dashboard">Open Admin Dashboard</a>{% endif %}
+                {% if is_admin %}<a class="link-card" href="/dashboard">Open Admin Code (NOT READY)</a>{% endif %}
                 <a class="link-card" href="/logout">Sign out</a>
             </div>
         </div>
@@ -1497,8 +1498,8 @@ CHAT_TEMPLATE = """
                 wrap.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-card">
-                            <h3>Start a conversation</h3>
-                            <div>Ask a question, upload a file, or switch styles in Settings.</div>
+                            <h3>No conversation yet.</h3>
+                            <div>Ask a question, upload a file, or switch styles/models in Settings. N Tech AI 2.5</div>
                         </div>
                     </div>`;
                 return;
@@ -1940,15 +1941,15 @@ IMAGE_TEMPLATE = """
             <a href="/">&larr; Back to Chat</a>
             <div class="muted">N Tech AI Images • 1024x1024</div>
         </div>
-        <h2 style="margin-top:0;">N Tech AI Image Generation >>> DO NOT USE <<< </h2>
+        <h2 style="margin-top:0;">N Tech AI Image Generation. LOW MARKET DAY PRICES! </h2>
         <div class="muted">Signed in as: {{ idn }}</div>
         <label>Quality</label>
         <select id="quality" onchange="handleQualityChange()">
-            <option value="low">Low (~$0.04/image)</option>
-            <option value="high">High (~$0.35/image)</option>
+            <option value="low">Low (~20 Credits/image)</option>
+            <option value="high">High (~35 Credits/image)</option>
         </select>
         <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
-        <button class="btn" onclick="generateImage()">Generate</button>
+        <button class="btn" onclick="generateImage()">Generate Image!</button>
         <div id="status" class="muted" style="margin-top:10px;">Ready</div>
         <div class="muted" style="margin-top:6px;">Session Spent: $<span id="imageSpent">0.000000</span></div>
         <div class="muted">Credits Used: <span id="imageCredits">0.00</span><span id="imageCreditLimit"></span></div>
@@ -1959,7 +1960,7 @@ IMAGE_TEMPLATE = """
         function handleQualityChange() {
             const quality = document.getElementById('quality').value;
             if (quality === 'high') {
-                alert('High quality images cost approximately $0.35 per 1024×1024 image.');
+                alert('High quality images cost approximately 35 per 1024×1024 image.');
             }
         }
 
@@ -2296,7 +2297,7 @@ def update_data():
 def ask():
     data = request.json or {}
     id_code = normalize_id_code(data.get("id_code", ""))
-    selected_model = data.get("model", "gpt-4o-mini")
+    selected_model = data.get("model", "gpt-5-nano")
     user_prompt = (data.get("prompt") or "").strip()
     memory_enabled = bool(data.get("memory", True))
     history = data.get("history", []) if memory_enabled else []
