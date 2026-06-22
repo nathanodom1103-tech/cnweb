@@ -1,4 +1,14 @@
-flask
-openai
+Flask
 gunicorn
+openai
 psycopg2-binary
+python-dotenv
+requests
+Werkzeug
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+Flask-Session
+bcrypt
+email-validator
+stripe
