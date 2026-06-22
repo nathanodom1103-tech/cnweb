@@ -5,6 +5,10 @@ import os
 import psycopg2
 import base64
 from datetime import datetime
+import uuid
+from werkzeug.security import generate_password_hash, check_password_hash
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ntechai-dev-secret")
@@ -67,6 +71,7 @@ IMAGE_PRICING = {
 IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
 VISION_MODEL = os.environ.get("OPENAI_VISION_MODEL", "gpt-4.1-mini")
 ADMIN_IDN = os.environ.get("ADMIN_IDN", "nathanodom11032013151507072014198319816789")
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 
 raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS = [i.strip() for i in raw_ids.split(",") if i.strip()]
@@ -145,13 +150,23 @@ def init_db():
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id_code VARCHAR(50) PRIMARY KEY,
+                email VARCHAR(255) UNIQUE,
+                google_sub VARCHAR(255) UNIQUE,
+                password_hash TEXT,
                 total_spent FLOAT DEFAULT 0.0,
                 display_name VARCHAR(255),
-                credit_limit FLOAT
+                credit_limit INTEGER DEFAULT 0,
+                credits_used INTEGER DEFAULT 0
             );
         """)
+
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(255);")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;")
         cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(255);")
-        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS credit_limit FLOAT;")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS total_spent FLOAT DEFAULT 0.0;")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS credit_limit INTEGER DEFAULT 0;")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS credits_used INTEGER DEFAULT 0;")
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS interaction_logs (
@@ -177,8 +192,8 @@ def init_db():
         for id_code in get_allowed_ids():
             cursor.execute(
                 """
-                INSERT INTO users (id_code, total_spent, display_name)
-                VALUES (%s, 0.0, %s)
+                INSERT INTO users (id_code, total_spent, display_name, credit_limit, credits_used)
+                VALUES (%s, 0.0, %s, 0, 0)
                 ON CONFLICT (id_code) DO UPDATE SET display_name = EXCLUDED.display_name;
                 """,
                 (id_code, USER_MAP.get(id_code, id_code))
@@ -191,6 +206,7 @@ def init_db():
         print(f"DB Error: {e}")
 
 
+init_db()
 init_db()
 
 # ----------------------------
@@ -1745,26 +1761,153 @@ CHAT_TEMPLATE = """
 
 LOGIN_TEMPLATE = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sign In - N Tech AI</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
-        body{font-family:Inter,system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#f5f7fb;margin:0}
-        .card{background:#fff;border:1px solid #d9e1ee;border-radius:16px;padding:28px;min-width:340px}
-        input,button{width:100%;padding:11px 12px;border-radius:10px;border:1px solid #d9e1ee;box-sizing:border-box}
-        button{margin-top:10px;background:#2563eb;color:#fff;border:none;font-weight:700}
+        body{
+            font-family:Inter,system-ui,sans-serif;
+            display:flex;
+            min-height:100vh;
+            align-items:center;
+            justify-content:center;
+            background:#f5f7fb;
+            margin:0;
+            padding:16px
+        }
+        .card{
+            background:#fff;
+            border:1px solid #d9e1ee;
+            border-radius:16px;
+            padding:28px;
+            width:min(460px, 100%);
+            box-shadow:0 10px 30px rgba(15,23,42,.08)
+        }
+        h2{margin:0 0 8px 0}
+        p{margin:0 0 16px 0;color:#64748b;line-height:1.45}
+        .section{padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;margin-top:12px}
+        .section h3{margin:0 0 10px 0;font-size:15px}
+        input,button{
+            width:100%;
+            padding:11px 12px;
+            border-radius:10px;
+            border:1px solid #d9e1ee;
+            box-sizing:border-box
+        }
+        input{margin-bottom:10px;background:#fff}
+        button{
+            margin-top:8px;
+            background:#2563eb;
+            color:#fff;
+            border:none;
+            font-weight:700;
+            cursor:pointer
+        }
+        .secondary{background:#0f172a}
+        .green{background:#16a34a}
         .err{color:#b42318;margin-top:10px}
+        .small{font-size:13px;color:#64748b;line-height:1.45;margin-top:10px}
+        .divider{
+            display:flex;
+            align-items:center;
+            gap:10px;
+            margin:16px 0;
+            color:#94a3b8;
+            font-size:13px
+        }
+        .divider::before,.divider::after{
+            content:"";
+            height:1px;
+            flex:1;
+            background:#e2e8f0
+        }
+        .google-wrap{
+            display:flex;
+            justify-content:center;
+            margin-top:10px
+        }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2 style="margin-top:0;">N Tech AI Sign In</h2>
-        <form method="POST" action="/login">
-            <input name="idn" type="password" placeholder="Enter IDN" required />
-            <button type="submit">Continue</button>
-            {% if error %}<div class="err">{{ error }}</div>{% endif %}
-        </form>
+        <h2>N Tech AI Sign In</h2>
+        <p>Use your IDN, email and password, or Google.</p>
+
+        <div class="section">
+            <h3>Legacy IDN sign in</h3>
+            <form method="POST" action="/login">
+                <input name="idn" type="password" placeholder="Enter IDN" autocomplete="current-password" />
+                <button type="submit">Continue with IDN</button>
+            </form>
+        </div>
+
+        <div class="section">
+            <h3>Email sign in</h3>
+            <form method="POST" action="/login">
+                <input name="email" type="email" placeholder="Email" autocomplete="email" />
+                <input name="password" type="password" placeholder="Password" autocomplete="current-password" />
+                <button type="submit" class="secondary">Sign In</button>
+            </form>
+        </div>
+
+        <div class="section">
+            <h3>Create account</h3>
+            <form method="POST" action="/signup">
+                <input name="display_name" type="text" placeholder="Display name" autocomplete="name" required />
+                <input name="email" type="email" placeholder="Email" autocomplete="email" required />
+                <input name="password" type="password" placeholder="Create password" autocomplete="new-password" required />
+                <button type="submit" class="green">Create Account</button>
+            </form>
+            <div class="small">Accounts start with a zero credit limit. Credits are added after payment at your rate of 1 cent = 10 credits.</div>
+        </div>
+
+        <div class="divider">OR</div>
+
+        <div id="g_id_onload"
+             data-client_id="{{ google_client_id }}"
+             data-callback="handleCredentialResponse"
+             data-auto_prompt="false">
+        </div>
+
+        <div class="google-wrap">
+            <div class="g_id_signin"
+                 data-type="standard"
+                 data-theme="outline"
+                 data-size="large"
+                 data-shape="pill"
+                 data-text="signin_with"
+                 data-logo_alignment="left">
+            </div>
+        </div>
+
+        {% if error %}
+        <div class="err">{{ error }}</div>
+        {% endif %}
+
+        <div class="small" style="margin-top:14px;">
+            Credit limit means the maximum allowed usage. As the user talks to the AI, credits used rise until the cap is reached, then access is denied.
+        </div>
     </div>
+
+    <script>
+        async function handleCredentialResponse(response) {
+            const r = await fetch("/google-login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ credential: response.credential })
+            });
+
+            const data = await r.json();
+            if (data.success) {
+                window.location = "/";
+            } else {
+                alert(data.error || "Google sign-in failed");
+            }
+        }
+    </script>
 </body>
 </html>
 """
@@ -2143,16 +2286,145 @@ def index():
 
 @app.route("/login", methods=["GET"])
 def login_page():
-    return render_template_string(LOGIN_TEMPLATE, error=None)
+    return render_template_string(LOGIN_TEMPLATE, error=None, google_client_id=GOOGLE_CLIENT_ID)
 
 
 @app.route("/login", methods=["POST"])
 def login_action():
     idn = normalize_id_code(request.form.get("idn"))
-    if not user_exists(idn):
-        return render_template_string(LOGIN_TEMPLATE, error="Invalid IDN"), 403
-    session["idn"] = idn
+    email = (request.form.get("email") or "").strip().lower()
+    password = request.form.get("password") or ""
+
+    if idn:
+        if not user_exists(idn):
+            return render_template_string(LOGIN_TEMPLATE, error="Invalid IDN", google_client_id=GOOGLE_CLIENT_ID), 403
+        session["idn"] = idn
+        return redirect(url_for("index"))
+
+    if email and password:
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id_code, password_hash FROM users WHERE LOWER(email) = LOWER(%s) LIMIT 1;",
+                (email,)
+            )
+            row = cursor.fetchone()
+            cursor.close()
+            conn.close()
+        except Exception as e:
+            return render_template_string(LOGIN_TEMPLATE, error=f"Database error: {e}", google_client_id=GOOGLE_CLIENT_ID), 500
+
+        if not row or not row[1]:
+            return render_template_string(LOGIN_TEMPLATE, error="Invalid email or password", google_client_id=GOOGLE_CLIENT_ID), 403
+
+        if not check_password_hash(row[1], password):
+            return render_template_string(LOGIN_TEMPLATE, error="Invalid email or password", google_client_id=GOOGLE_CLIENT_ID), 403
+
+        session["idn"] = row[0]
+        return redirect(url_for("index"))
+
+    return render_template_string(LOGIN_TEMPLATE, error="Enter an IDN or email/password.", google_client_id=GOOGLE_CLIENT_ID), 400
+
+
+@app.route("/signup", methods=["POST"])
+def signup_action():
+    display_name = (request.form.get("display_name") or "").strip()
+    email = (request.form.get("email") or "").strip().lower()
+    password = request.form.get("password") or ""
+
+    if not display_name or not email or not password:
+        return render_template_string(LOGIN_TEMPLATE, error="All sign-up fields are required.", google_client_id=GOOGLE_CLIENT_ID), 400
+
+    id_code = str(uuid.uuid4())[:12].upper()
+    password_hash = generate_password_hash(password)
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO users (id_code, email, password_hash, display_name, total_spent, credit_limit, credits_used)
+            VALUES (%s, %s, %s, %s, 0.0, 0, 0)
+            ON CONFLICT (id_code) DO UPDATE
+            SET email = EXCLUDED.email,
+                password_hash = EXCLUDED.password_hash,
+                display_name = EXCLUDED.display_name;
+            """,
+            (id_code, email, password_hash, display_name),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        return render_template_string(LOGIN_TEMPLATE, error=f"Could not create account: {e}", google_client_id=GOOGLE_CLIENT_ID), 500
+
+    session["idn"] = id_code
     return redirect(url_for("index"))
+
+
+@app.route("/google-login", methods=["POST"])
+def google_login():
+    if not GOOGLE_CLIENT_ID:
+        return jsonify(success=False, error="Google sign-in is not configured on the server."), 400
+
+    data = request.get_json(silent=True) or {}
+    credential = data.get("credential")
+    if not credential:
+        return jsonify(success=False, error="Missing Google credential"), 400
+
+    try:
+        info = id_token.verify_oauth2_token(
+            credential,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID,
+        )
+
+        google_sub = info.get("sub", "")
+        email = (info.get("email") or "").strip().lower()
+        display_name = (info.get("name") or email.split("@")[0] or "User").strip()
+
+        if not google_sub or not email:
+            return jsonify(success=False, error="Google account data missing"), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id_code FROM users WHERE google_sub = %s OR LOWER(email) = LOWER(%s) LIMIT 1;",
+            (google_sub, email),
+        )
+        row = cursor.fetchone()
+
+        if row:
+            id_code = row[0]
+            cursor.execute(
+                """
+                UPDATE users
+                SET google_sub = COALESCE(google_sub, %s),
+                    email = COALESCE(email, %s),
+                    display_name = COALESCE(display_name, %s)
+                WHERE id_code = %s;
+                """,
+                (google_sub, email, display_name, id_code),
+            )
+        else:
+            id_code = str(uuid.uuid4())[:12].upper()
+            cursor.execute(
+                """
+                INSERT INTO users (id_code, email, google_sub, display_name, total_spent, credit_limit, credits_used)
+                VALUES (%s, %s, %s, %s, 0.0, 0, 0);
+                """,
+                (id_code, email, google_sub, display_name),
+            )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        session["idn"] = id_code
+        return jsonify(success=True)
+    except Exception as e:
+        return jsonify(success=False, error=f"Google sign-in failed: {e}"), 400
 
 
 @app.route("/logout")
