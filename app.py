@@ -713,8 +713,252 @@ th {
     box-shadow: 0 1px 0 rgba(255,255,255,.25) inset;
 }
 """
+n_tech_ai=True
+reason="2.6 is running well"
+if n_tech_ai == False:
+    CHAT_TEMPLATE = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>N Tech AI Offline</title>
 
-CHAT_TEMPLATE = """
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+body{
+    background:#090909;
+    overflow:hidden;
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    color:white;
+}
+
+/* Animated background */
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:-50%;
+    background:
+        radial-gradient(circle,#66000033 0%,transparent 70%),
+        radial-gradient(circle at top,#99000055 0%,transparent 50%);
+    animation:bgRotate 20s linear infinite;
+}
+
+@keyframes bgRotate{
+    from{transform:rotate(0deg);}
+    to{transform:rotate(360deg);}
+}
+
+/* Scan lines */
+
+.scanlines{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,.02),
+            rgba(255,255,255,.02) 2px,
+            transparent 2px,
+            transparent 4px
+        );
+    animation:scan 8s linear infinite;
+}
+
+@keyframes scan{
+    from{transform:translateY(-100%);}
+    to{transform:translateY(100%);}
+}
+
+.container{
+    position:relative;
+    width:min(800px,92%);
+    padding:50px;
+    text-align:center;
+    border:2px solid rgba(255,0,0,.4);
+    border-radius:20px;
+    background:rgba(15,15,15,.85);
+    backdrop-filter:blur(12px);
+    box-shadow:
+        0 0 40px rgba(255,0,0,.35),
+        inset 0 0 20px rgba(255,0,0,.15);
+    animation:fadeUp 1s ease;
+}
+
+@keyframes fadeUp{
+    from{
+        transform:translateY(40px);
+        opacity:0;
+    }
+    to{
+        transform:none;
+        opacity:1;
+    }
+}
+
+.icon{
+    font-size:90px;
+    animation:pulse 2s infinite;
+}
+
+@keyframes pulse{
+    0%,100%{
+        transform:scale(1);
+        color:#ff5555;
+    }
+    50%{
+        transform:scale(1.15);
+        color:#ff2222;
+        text-shadow:0 0 30px red;
+    }
+}
+
+.title{
+    margin-top:20px;
+    font-size:46px;
+    letter-spacing:4px;
+    text-transform:uppercase;
+    animation:glitch 2.5s infinite;
+}
+
+@keyframes glitch{
+    0%,100%{
+        text-shadow:
+            0 0 8px red;
+    }
+    20%{
+        transform:translateX(2px);
+    }
+    21%{
+        transform:translateX(-2px);
+    }
+    40%{
+        text-shadow:
+            -2px 0 red,
+            2px 0 cyan;
+    }
+    60%{
+        transform:translateY(2px);
+    }
+}
+
+.subtitle{
+    margin-top:18px;
+    color:#bbbbbb;
+    font-size:18px;
+}
+
+.reason{
+    margin:35px auto;
+    padding:20px;
+    max-width:600px;
+    border-left:5px solid #ff3333;
+    background:#151515;
+    color:#ffb3b3;
+    font-size:20px;
+    animation:blink 2s infinite;
+}
+
+@keyframes blink{
+    0%,100%{
+        box-shadow:0 0 15px rgba(255,0,0,.15);
+    }
+    50%{
+        box-shadow:0 0 30px rgba(255,0,0,.45);
+    }
+}
+
+button{
+    margin-top:25px;
+    padding:15px 40px;
+    font-size:18px;
+    background:#d60000;
+    color:white;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+    transition:.3s;
+}
+
+button:hover{
+    transform:scale(1.06);
+    background:#ff2222;
+    box-shadow:0 0 25px red;
+}
+
+.footer{
+    margin-top:30px;
+    color:#777;
+    font-size:14px;
+}
+
+.status{
+    margin-top:18px;
+    color:#66ff66;
+    font-family:monospace;
+    animation:dots 2s infinite;
+}
+
+@keyframes dots{
+    0%{opacity:.5;}
+    50%{opacity:1;}
+    100%{opacity:.5;}
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="scanlines"></div>
+
+<div class="container">
+
+<div class="icon">⚠</div>
+
+<div class="title">
+N Tech AI Offline
+</div>
+
+<div class="subtitle">
+The AI service is currently unavailable.
+</div>
+
+<div class="reason">
+Reason:<br><br>
+<strong>{reason}</strong>
+</div>
+
+<div class="status">
+System Status: OFFLINE
+</div>
+
+<button onclick="location.reload()">
+Retry Connection
+</button>
+
+<div class="footer">
+N Tech AI • Automatic recovery will occur once the service is available.
+</div>
+
+</div>
+
+</body>
+</html>
+"""
+else:
+    CHAT_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en" data-theme="system" data-density="comfortable" data-radius="soft" data-text="medium" data-motion="on">
 <head>
@@ -2084,12 +2328,13 @@ IMAGE_TEMPLATE = """
             <a href="/">&larr; Back to Chat</a>
             <div class="muted">N Tech AI Images • 1024x1024</div>
         </div>
-        <h2 style="margin-top:0;">N Tech AI Image Generation. LOW MARKET DAY PRICES! </h2>
+        <h2 style="margin-top:0;">N Tech AI Image Generation. </h2>
         <div class="muted">Signed in as: {{ idn }}</div>
+        <div class="muted">Be warned, {{ idn }} prices are very high, and will be down soon. we are working on it.</div>
         <label>Quality</label>
         <select id="quality" onchange="handleQualityChange()">
             <option value="low">Low (~20 Credits/image)</option>
-            <option value="high">High (~35 Credits/image)</option>
+            <option value="high">High (~350 Credits/image)</option>
         </select>
         <textarea id="prompt" placeholder="Describe the image you want..."></textarea>
         <button class="btn" onclick="generateImage()">Generate Image!</button>
