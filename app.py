@@ -56,7 +56,7 @@ MODEL_PRICING = {
     "gpt-4o": {"input": 0.00250, "output": 0.01000},         # Accurate
     "gpt-5.4": {"input": 0.00250, "output": 0.01500},        # Accurate
     "gpt-5.5": {"input": 0.00500, "output": 0.03000},        # Accurate
-
+    "gpt-5.6-luna": {"input": 0.00020, "output": 0.00120},
     # --- Elite Reasoning & STEM Models ---
     "o4-mini": {"input": 0.00110, "output": 0.00440},        # FIXED: Updated to Standard API rate
 }
@@ -964,7 +964,7 @@ else:
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>N Tech AI 2.5</title>
+    <title>N Tech AI 2.6</title>
     <style>
         """ + BASE_STYLE + """
         body {
@@ -1407,16 +1407,16 @@ else:
 </head>
 <body>
     <div class="intro" id="introSplash">
-        <div class="logo">N Tech AI</div>
+        <div class="logo">N Tech AI 2.6</div>
     </div>
 
     <div class="app">
         <div class="card glass">
             <div class="topbar">
                 <div>
-                    <h2>N Tech AI 2.5</h2>
+                    <h2>N Tech AI 2.6</h2>
                     <div class="subtitle" style="font-size: 8px;">
-                         2.5 is out, and what does it bring? NEW MODELS. N Tech AI 2.3 Smart is extremly smart and cost efficient, and 2.4 Smart is N Tech AI's first "Reasoning" Model, meaning it has insane accuracy, and is extremely good to use. The 2.5 models are the best models yet, but they are extremly expensive. use them only if you have a lot of credits. By Using N Tech AI, you agree to the updated terms and conditions. See all of this at >>> info.thecnweb.org <<< 
+                         Welcome to the future, 2.6 is out, and what does it bring? NEW MODELS. N Tech AI 2.3 Smart is extremly smart and cost efficient, and 2.4 Smart is N Tech AI's first "Reasoning" Model, meaning it has insane accuracy, and is extremely good to use. The 2.5 models are the best models yet, but they are extremly expensive. use them only if you have a lot of credits. But wait, there is one other model... The N Tech AI 2.6 Ultra! But... this cannot be right... it is cheaper than any other model in all of N Tech AI??? By Using N Tech AI, you agree to the updated terms and conditions. See all of this at >>> info.thecnweb.org <<< 
                     </div>
                     <div class="chip-row">
                         <span class="pill"><span class="status-dot"></span> Live Chat</span>
@@ -1509,8 +1509,8 @@ else:
                 <!--2.5 MODELS-->
                 
                 <option value="gpt-5.4">N Tech AI 2.5 Smart</option>
-                <option value="gpt-5.5">N Tech AI 2.5 Ultra</option>
-                <option value="gpt-5.3-codex-global">N Tech AI Code (USE N CODE)</option>
+                
+                <option value="gpt-5.6-luna">N Tech AI 2.6 Ultra (Lowest cost!!!)</option>
             </select>
 
         </div>
@@ -1606,6 +1606,7 @@ else:
                 <a class="link-card" href="/code">Open N-Code</a>
                 {% if is_admin %}<a class="link-card" href="/dashboard">Open Admin Dashboard</a>{% endif %}
                 {% if is_admin %}<a class="link-card" href="/dashboard">Open Admin Code (NOT READY)</a>{% endif %}
+                {% if is_admin %}<a class="link-card" href="info.thecnweb.org">Open Info Panel</a>{% endif %}
                 <a class="link-card" href="/logout">Sign out</a>
             </div>
         </div>
