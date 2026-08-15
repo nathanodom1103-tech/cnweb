@@ -716,7 +716,7 @@ th {
 n_tech_ai=True
 reason="2.6 is running well"
 if n_tech_ai == False:
-    CHAT_TEMPLATE = f"""
+    CHAT_TEMPLATE ="""
 <!DOCTYPE html>
 <html lang="en">
 <head>
