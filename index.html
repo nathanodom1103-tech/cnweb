@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>N Tech AI 2.5 + THE CN WEB</title>
+  <title>N Tech AI 2.6 + THE CN WEB</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -504,6 +504,187 @@
       color: #111827;
     }
 
+
+    /* ========== FUTURE TIMELINE ========== */
+    .timeline-wrap {
+      margin-top: 24px;
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+      padding: 34px 28px;
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    }
+
+    .timeline-intro {
+      text-align: center;
+      color: #4b5563;
+      max-width: 720px;
+      margin: 0 auto 34px;
+      line-height: 1.6;
+    }
+
+    .timeline {
+      position: relative;
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 10px 0;
+    }
+
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      transform: translateX(-50%);
+      background: linear-gradient(180deg, #ff0000, #7722ff, #00aaff);
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(255,0,0,0.18);
+    }
+
+    .timeline-item {
+      position: relative;
+      width: 50%;
+      padding: 0 34px 34px 0;
+    }
+
+    .timeline-item:nth-child(even) {
+      margin-left: 50%;
+      padding: 0 0 34px 34px;
+    }
+
+    .timeline-dot {
+      position: absolute;
+      top: 6px;
+      right: -9px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ff0000;
+      border: 4px solid white;
+      box-shadow: 0 0 0 3px rgba(255,0,0,0.16), 0 0 18px rgba(255,0,0,0.45);
+      z-index: 2;
+    }
+
+    .timeline-item:nth-child(even) .timeline-dot {
+      left: -9px;
+      right: auto;
+    }
+
+    .timeline-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 22px;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .timeline-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.10);
+    }
+
+    .timeline-year {
+      color: #ff0000;
+      font-size: 1.35rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+    }
+
+    .timeline-status {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: #fee2e2;
+      color: #b91c1c;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .timeline-card h3 {
+      margin-bottom: 8px;
+      font-size: 1.05rem;
+    }
+
+    .timeline-card p {
+      color: #6b7280;
+      line-height: 1.55;
+      font-size: 0.92rem;
+    }
+
+    .next-event {
+      margin-top: 34px;
+      padding: 22px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #111827, #1f2937);
+      color: white;
+      text-align: center;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.18);
+    }
+
+    .next-event-label {
+      color: #67e8f9;
+      font-size: 0.75rem;
+      letter-spacing: 3px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .next-event h3 {
+      margin-top: 8px;
+      font-size: 1.25rem;
+    }
+
+    .external-info-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 999px;
+      background: #111827;
+      color: white;
+      text-decoration: none;
+      font-weight: 800;
+      letter-spacing: 1px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+      transition: 0.25s ease;
+    }
+
+    .external-info-btn:hover {
+      transform: translateY(-3px) scale(1.03);
+      background: #ff0000;
+      box-shadow: 0 12px 28px rgba(255,0,0,0.28);
+    }
+
+    @media (max-width: 700px) {
+      .timeline::before {
+        left: 12px;
+        transform: none;
+      }
+
+      .timeline-item,
+      .timeline-item:nth-child(even) {
+        width: 100%;
+        margin-left: 0;
+        padding: 0 0 28px 40px;
+      }
+
+      .timeline-dot,
+      .timeline-item:nth-child(even) .timeline-dot {
+        left: 3px;
+        right: auto;
+      }
+
+      .timeline-wrap {
+        padding: 26px 16px;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -525,10 +706,10 @@
         <div class="ring ring2"></div>
 
         <h1 class="main-title">N TECH AI</h1>
-        <div class="subtitle">N Tech AI 2.5 is out. Try it today.</div>
+        <div class="subtitle">N Tech AI 2.6 is out. Try it today.</div>
 
       <button class="enter-btn" onclick="openWeb()">
-         GO TO N Tech AI 2.5
+         GO TO N Tech AI 2.6
       </button>
 
       <script>
@@ -553,7 +734,7 @@
     <div id="landing-page" class="page-content active-page-content">
       <div class="project-container">
         <h1 class="website-title">THE CN WEB</h1>
-        <p class="website-subtitle">Welcome to THE CN WEB. Last update: 4/24/2026.</p>
+        <p class="website-subtitle">Welcome to THE CN WEB. Last update: 8/24/2026.</p>
 
         <div style="display: flex; flex-direction: column; align-items: center; gap: 24px; margin-top: 60px;">
           <button onclick="showPage('game')" class="start-btn" style="padding: 28px 64px; font-size: 30px;">
@@ -561,7 +742,7 @@
           </button>
 
           <button onclick="showPage('login')" class="start-btn" style="padding: 28px 64px; font-size: 25px;">
-            N Tech AI
+            N Tech AI 
           </button>
 
           <button
@@ -569,6 +750,23 @@
             style="color: var(--brand-color); font-weight: 700; cursor: pointer; background: transparent; border: none; text-decoration: underline; font-size: 1rem;"
           >
             View Website Future Projects
+          </button>
+
+          <a
+            class="external-info-btn"
+            href="https://info.thecnweb.org"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            ℹ️ OPEN THE CN WEB INFO
+          </a>
+
+          <button
+            onclick="showPage('timeline')"
+            class="start-btn"
+            style="padding: 18px 42px; font-size: 18px;"
+          >
+            🗓️ VIEW DEVELOPMENT TIMELINE
           </button>
         </div>
       </div>
@@ -632,7 +830,93 @@
       </div>
     </div>
 
-    <!-- PAGE 4: LOGIN -->
+
+    <!-- PAGE 4: DEVELOPMENT TIMELINE -->
+    <div id="timeline-page" class="page-content">
+      <div class="project-container">
+        <button onclick="showPage('landing')" class="back-home">← BACK HOME</button>
+
+        <h2 class="website-title">TIMELINE</h2>
+        <p class="website-subtitle">THE CN WEB development roadmap</p>
+
+        <div class="timeline-wrap">
+          <p class="timeline-intro">
+            A future view of THE CN WEB and N Tech AI development.
+            Confirmed dates and events are shown only when they are defined;
+            future entries are roadmap placeholders rather than guaranteed release dates.
+          </p>
+
+          <div class="timeline">
+            <div class="timeline-item">
+              <div class="timeline-dot"></div>
+              <div class="timeline-card">
+                <div class="timeline-year">2.6 - 2.7</div>
+                <span class="timeline-status">IN PROGRESS</span>
+                <h3>Low-cost models</h3>
+                <p>
+                  N Tech AI 2.6 and 2.7 models are built to 
+                  be the lowest cost of all, 2.6 will include 
+                  extreme low prices, and 2.7: NO prices at all
+                </p>
+              </div>
+            </div>
+
+            <div class="timeline-item">
+              <div class="timeline-dot"></div>
+              <div class="timeline-card">
+                <div class="timeline-year">2.8 - 2.9</div>
+                <span class="timeline-status">PLANNED</span>
+                <h3>N Tech Browser & Vids</h3>
+                <p>
+                  N tech will be releasing an unblocked browser,
+                  and even further into the future, N Tech vids,
+                  and more.
+                </p>
+              </div>
+            </div>
+
+            <div class="timeline-item">
+              <div class="timeline-dot"></div>
+              <div class="timeline-card">
+                <div class="timeline-year">3.0 - 3.1</div>
+                <span class="timeline-status">PLANNED</span>
+                <h3>N Tech AI: The Future</h3>
+                <p>
+                  N Tech AI will create it's first OGMLL, 
+                  which will be a high reasoning no cost model, 
+                  capable of generating images, text, videos, and more.
+                </p>
+              </div>
+            </div>
+
+            <div class="timeline-item">
+              <div class="timeline-dot"></div>
+              <div class="timeline-card">
+                <div class="timeline-year">3.2+</div>
+                <span class="timeline-status">FUTURE</span>
+                <h3>Beyond the Current Roadmap</h3>
+                <p>
+                  Additional years remain open for future projects, products,
+                  infrastructure upgrades, and new N Tech systems.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="next-event">
+            <div class="next-event-label">NEXT PLANNED EVENT</div>
+            <h3>N Tech AI / THE CN WEB — Continued Platform Development</h3>
+            <p style="margin-top:8px; color:#d1d5db; line-height:1.5;">
+              The supplied source does not specify an exact upcoming event date,
+              so this is presented as the current development focus rather than
+              an invented release announcement.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 5: LOGIN -->
     <div id="login-page" class="page-content">
       <div class="project-container">
         <button onclick="showPage('landing')" class="back-home">← BACK HOME</button>
